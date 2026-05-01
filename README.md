@@ -102,7 +102,9 @@ Recommended extensions:
 2. Open [Vercel](https://vercel.com/).
 3. Click `Add New Project`.
 4. Import the `poupa-market` repository.
-5. Keep the default Next.js settings:
+5. Select the GitHub repository `rafameyer/poupa-market`.
+6. Confirm the framework is detected as `Next.js`.
+7. Keep the default Next.js settings:
 
 ```txt
 Install command: npm install
@@ -111,7 +113,19 @@ Output directory: .next
 Development command: npm run dev
 ```
 
-6. Deploy.
+8. Deploy.
+9. Open the public Vercel URL after the deployment finishes.
+
+### Connect GitHub to Vercel
+
+1. Push the repository to GitHub under `rafameyer/poupa-market`.
+2. Sign in to [Vercel](https://vercel.com/) with GitHub.
+3. Allow Vercel access to the `rafameyer` account or the specific repository.
+4. In Vercel, choose `Add New Project`.
+5. Import `rafameyer/poupa-market`.
+6. Confirm the default Next.js build settings.
+7. Deploy.
+8. Future pushes to `main` will create new production deployments by default.
 
 ### Option B: Vercel CLI
 
@@ -131,8 +145,21 @@ After deployment:
 3. Tap `Add to Home Screen`.
 4. Confirm the app name `PoupaMarket`.
 5. Launch the app from the Home Screen.
+6. Verify the app opens without normal Safari browser chrome.
 
 Phase 0 includes the manifest, icon references, theme color, and standalone display settings needed for manual Safari installation. Offline support and service workers are intentionally deferred.
+
+## PWA Testing Checklist
+
+- [ ] The deployed Vercel URL opens successfully in Safari.
+- [ ] `/dashboard` loads without errors on iPhone and iPad.
+- [ ] The app icon and app name look correct in the Add to Home Screen preview.
+- [ ] The app launches from the Home Screen in standalone mode.
+- [ ] The bottom navigation remains visible and usable.
+- [ ] Safe-area spacing looks correct around the notch and home indicator.
+- [ ] The loading, error, and not-found states still render cleanly.
+- [ ] The app works without any login requirement.
+- [ ] No out-of-scope features such as Supabase, Google login, or CRUD were introduced.
 
 ## Folder Structure
 
@@ -187,4 +214,6 @@ The repository is designed to work well with Codex and Copilot, but the project 
 - [docs/AUTH_STRATEGY.md](./docs/AUTH_STRATEGY.md)
 - [docs/CODEX_WORKFLOW.md](./docs/CODEX_WORKFLOW.md)
 - [docs/GITHUB_SETUP.md](./docs/GITHUB_SETUP.md)
+- [docs/VERCEL_DEPLOYMENT.md](./docs/VERCEL_DEPLOYMENT.md)
+- [docs/IPHONE_IPAD_TESTING.md](./docs/IPHONE_IPAD_TESTING.md)
 - [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)
