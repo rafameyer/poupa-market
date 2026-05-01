@@ -1,24 +1,29 @@
 # Auth Strategy
 
-## Phase 0 stance
+## Current stance
 
-Authentication is intentionally not implemented in this phase.
+Authentication is now implemented in Phase 0.4 using Supabase Auth with Google
+OAuth.
 
 ## What exists today
 
-- `/login` placeholder UI
-- `/register` placeholder UI
-- A shared auth route group and layout
-- `src/lib/auth/auth-strategy.ts` to document the intended direction
+- `/login` public route with `Continue with Google`
+- `/register` public route with onboarding notes
+- protected main app routes under `(app)`
+- Supabase browser and server clients
+- auth callback handling at `/auth/callback`
+- logout support
+- basic user information in `/settings`
 
 ## What comes later
 
-- Supabase Auth
-- Apple login
-- Google login
-- Email magic links
-- Cloud sync between iPhone and iPad
+- Apple login if needed
+- email magic links if needed
+- richer profile and preference data
+- cloud sync features beyond authentication
 
 ## Core principle
 
-The MVP should remain usable without requiring login. Authentication is expected to become important once cross-device sync is introduced.
+Authentication now protects the main app shell, but the implementation remains
+intentionally narrow: no custom profile tables, no grocery CRUD, and no extra
+providers beyond Google yet.

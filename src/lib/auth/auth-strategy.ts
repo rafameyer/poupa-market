@@ -1,15 +1,17 @@
 export type PlannedAuthProvider = "apple" | "google" | "magic-link";
 
 export interface AuthStrategy {
-  mode: "local-first";
-  requiresAccountForMvp: false;
+  mode: "supabase-google-oauth";
+  protectsMainAppRoutes: true;
   syncProvider: "supabase";
+  activeProviders: ["google"];
   plannedProviders: PlannedAuthProvider[];
 }
 
 export const authStrategy: AuthStrategy = {
-  mode: "local-first",
-  requiresAccountForMvp: false,
+  mode: "supabase-google-oauth",
+  protectsMainAppRoutes: true,
   syncProvider: "supabase",
+  activeProviders: ["google"],
   plannedProviders: ["apple", "google", "magic-link"],
 };

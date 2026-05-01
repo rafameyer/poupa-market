@@ -8,22 +8,24 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-[var(--shadow)] backdrop-blur-xl">
         <div className="mb-8">
           <div className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-            Local-first auth shell
+            Supabase Auth shell
           </div>
           <h1 className="mt-4 text-3xl font-semibold text-slate-950">
             {APP_NAME}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">{APP_TAGLINE}</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Login arrives later with Supabase sync. For now, the MVP stays usable
-            without an account.
+            Google sign-in is enabled through Supabase Auth for this phase. The
+            public auth routes stay outside the protected main app shell.
           </p>
         </div>
         {children}
         <div className="mt-6 rounded-[1.5rem] bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          Want to keep exploring?{" "}
+          After login you will return to the protected app. Need the setup
+          details? Check the auth docs in the repository.
+          {" "}
           <Link className="font-semibold text-emerald-700" href="/dashboard">
-            Continue to the dashboard
+            Dashboard redirects if you are not signed in
           </Link>
           .
         </div>

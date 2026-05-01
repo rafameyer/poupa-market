@@ -4,7 +4,7 @@ PoupaMarket is a mobile-first Progressive Web App for planning grocery shopping 
 
 ## Project Status
 
-Phase 0 foundation is implemented. The repository currently provides the app shell, routes, PWA baseline, placeholder auth pages, storage abstraction, domain types, and documentation needed for future phases.
+Phase 0 foundation is implemented. The repository currently provides the app shell, routes, PWA baseline, Supabase Google authentication, storage abstraction, domain types, and documentation needed for future phases.
 
 ## Repository Information
 
@@ -21,7 +21,8 @@ Phase 0 foundation is implemented. The repository currently provides the app she
 - ESLint
 - Progressive Web App manifest setup
 - Vercel-ready deployment flow
-- Local-first storage foundation with Supabase planned later
+- Supabase Auth with Google OAuth
+- Local-first storage foundation
 
 ## Getting Started
 
@@ -43,6 +44,25 @@ npm -v
 npm install
 ```
 
+### Configure environment variables
+
+Create a local environment file from the example:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in:
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+These values come from your Supabase project settings. Supabase documentation may
+also refer to the public API key as a publishable key, but this project uses
+the requested `NEXT_PUBLIC_SUPABASE_ANON_KEY` variable name.
+
 ### Run locally
 
 ```bash
@@ -50,6 +70,9 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+After the environment variables are configured, use the `/login` route to start
+Google authentication.
 
 ### Lint
 
@@ -136,6 +159,21 @@ vercel
 vercel --prod
 ```
 
+## Authentication Setup
+
+PoupaMarket uses Supabase Auth with Google OAuth in Phase 0.4.
+
+High-level setup:
+
+1. Create a Supabase project.
+2. Copy the project URL and anon key into `.env.local`.
+3. Enable Google in Supabase Auth.
+4. Create Google Cloud OAuth credentials.
+5. Add local and production redirect URLs in Supabase.
+6. Use `/login` and click `Continue with Google`.
+
+Detailed setup instructions are in [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md).
+
 ## Install on iPhone or iPad
 
 After deployment:
@@ -158,8 +196,9 @@ Phase 0 includes the manifest, icon references, theme color, and standalone disp
 - [ ] The bottom navigation remains visible and usable.
 - [ ] Safe-area spacing looks correct around the notch and home indicator.
 - [ ] The loading, error, and not-found states still render cleanly.
-- [ ] The app works without any login requirement.
-- [ ] No out-of-scope features such as Supabase, Google login, or CRUD were introduced.
+- [ ] Unauthenticated users are redirected to `/login`.
+- [ ] Authenticated users can reach `/dashboard`.
+- [ ] No out-of-scope grocery CRUD, payments, or scraping were introduced.
 
 ## Folder Structure
 
@@ -211,6 +250,7 @@ The repository is designed to work well with Codex and Copilot, but the project 
 - [docs/ROUTING.md](./docs/ROUTING.md)
 - [docs/STORAGE_STRATEGY.md](./docs/STORAGE_STRATEGY.md)
 - [docs/PWA_SETUP.md](./docs/PWA_SETUP.md)
+- [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md)
 - [docs/AUTH_STRATEGY.md](./docs/AUTH_STRATEGY.md)
 - [docs/CODEX_WORKFLOW.md](./docs/CODEX_WORKFLOW.md)
 - [docs/GITHUB_SETUP.md](./docs/GITHUB_SETUP.md)
