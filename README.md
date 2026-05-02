@@ -4,7 +4,7 @@ PoupaMarket is a mobile-first Progressive Web App for planning grocery shopping 
 
 ## Project Status
 
-Phase 0 foundation is implemented. The repository currently provides the app shell, routes, PWA baseline, Supabase Google authentication, storage abstraction, domain types, and documentation needed for future phases.
+Phase 1 free-text list parsing is now implemented on top of the Phase 0 foundation. The repository provides the app shell, routes, PWA baseline, Supabase Google authentication, local list persistence, an AI-assisted parser route with deterministic fallback, and documentation for future comparison phases.
 
 ## Repository Information
 
@@ -57,11 +57,17 @@ Fill in:
 ```txt
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+OPENAI_API_KEY=
+OPENAI_LIST_PARSER_MODEL=gpt-4.1-mini
 ```
 
 These values come from your Supabase project settings. Supabase documentation may
 also refer to the public API key as a publishable key, but this project uses
 the requested `NEXT_PUBLIC_SUPABASE_ANON_KEY` variable name.
+
+`OPENAI_API_KEY` enables AI-assisted free-text grocery parsing in Phase 1. If it
+is missing, PoupaMarket falls back to the built-in deterministic parser so the
+list flow still works locally.
 
 ### Run locally
 
@@ -74,6 +80,8 @@ Open [http://localhost:3000](http://localhost:3000).
 After the environment variables are configured, use the `/login` route to start
 Google authentication. First-time users are routed through `/register` after the
 Google step to confirm their profile details before the protected app opens.
+Then use `/lists` to build a shopping list from free text, review the parsed
+items, save the list locally, and continue into the compare placeholder.
 
 ### Lint
 

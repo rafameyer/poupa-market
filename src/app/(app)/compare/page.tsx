@@ -21,8 +21,8 @@ export default function ComparePage() {
           </>
         }
         eyebrow="Compare markets"
-        title="Browse totals, matches, and savings without crowding mobile"
-        description="This route now carries the Figma direction for compare markets, match cards, market details, and a softer savings-history view."
+        title="Land on a comparison-ready placeholder with your saved list"
+        description="Phase 1 keeps compare visual and structured: select the list you built, preview the scope, and hold space for totals, matches, and savings history."
       />
 
       <CompareWorkspace />

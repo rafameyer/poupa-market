@@ -21,8 +21,8 @@ export default function ListsPage() {
           </>
         }
         eyebrow="Shopping lists"
-        title="Keep list flows simple and compare-ready"
-        description="This route now reflects the Figma direction: segmented list states, a lightweight creation area, and a clear handoff into compare markets."
+        title="Turn free text into compare-ready grocery lists"
+        description="Create a list the way you naturally type it, review the parsed groceries, and keep the whole flow mobile-first before comparison logic arrives."
       />
 
       <ListsWorkspace />
