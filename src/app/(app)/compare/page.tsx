@@ -1,28 +1,31 @@
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Card } from "@/components/ui/Card";
 import { PageContainer } from "@/components/app/PageContainer";
+import { PageIntro } from "@/components/app/PageIntro";
+import { CompareWorkspace } from "@/components/compare/CompareWorkspace";
+import { Badge } from "@/components/ui/badge";
 
 export default function ComparePage() {
   return (
     <PageContainer>
-      <div className="grid gap-4">
-        <EmptyState
-          eyebrow="Savings view"
-          title="Comparison will summarize totals across nearby markets"
-          description="This route reserves the user journey for the eventual savings engine while staying strictly within the Phase 0 foundation brief."
-        />
+      <PageIntro
+        actions={
+          <>
+            <Badge className="rounded-full px-3 py-1" variant="secondary">
+              Totals
+            </Badge>
+            <Badge className="rounded-full px-3 py-1" variant="secondary">
+              Matches
+            </Badge>
+            <Badge className="rounded-full px-3 py-1" variant="secondary">
+              History
+            </Badge>
+          </>
+        }
+        eyebrow="Compare markets"
+        title="Browse totals, matches, and savings without crowding mobile"
+        description="This route now carries the Figma direction for compare markets, match cards, market details, and a softer savings-history view."
+      />
 
-        <Card>
-          <h2 className="text-lg font-semibold text-slate-950">
-            Planned result shape
-          </h2>
-          <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-            <li>Each market will expose a total and a list of missing products.</li>
-            <li>The cheapest market and estimated savings are already typed.</li>
-            <li>No actual comparison logic has been implemented yet.</li>
-          </ul>
-        </Card>
-      </div>
+      <CompareWorkspace />
     </PageContainer>
   );
 }

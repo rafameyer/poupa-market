@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { AlertCircle, LockKeyhole } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/badge";
+import { OnboardingCarousel } from "@/components/auth/OnboardingCarousel";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 interface LoginFormProps {
@@ -42,48 +44,53 @@ export function LoginForm({
   }
 
   return (
-    <Card>
-      <h2 className="text-2xl font-semibold text-slate-950">
-        Continue with Google
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        Supabase Auth handles the sign-in flow for PoupaMarket. Google is the
-        first enabled provider in this phase.
-      </p>
+    <Card className="min-h-[34rem] gap-5 rounded-[2rem] px-6 py-6">
+      <div className="space-y-3">
+        <Badge className="rounded-full px-3 py-1" variant="secondary">
+          Welcome back
+        </Badge>
+        <div className="space-y-2">
+          <h2 className="text-[2rem] font-semibold tracking-tight text-foreground">
+            Continue with Google
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Start with your Google account, then step into a cleaner mobile
+            planning flow for lists, nearby markets, and savings.
+          </p>
+        </div>
+      </div>
+
+      <OnboardingCarousel />
 
       {message ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="flex items-start gap-3 rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
           {message}
         </div>
       ) : null}
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-auto space-y-4 pt-4">
         <Button
-          className="w-full"
+          className="h-12 w-full text-base"
           disabled={isSubmitting}
           onClick={signInWithGoogle}
+          size="lg"
           type="button"
         >
           {isSubmitting ? "Redirecting to Google..." : "Continue with Google"}
         </Button>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-          After Google authentication, Supabase redirects you back to PoupaMarket
-          and unlocks the protected app routes.
+        <div className="flex items-start gap-3 rounded-[1.35rem] bg-secondary px-4 py-3 text-sm leading-6 text-secondary-foreground">
+          <LockKeyhole className="mt-0.5 size-4 shrink-0 text-primary" />
+          After Google authentication, PoupaMarket brings you back into the app
+          and keeps the current protected route flow working as it does today.
         </div>
-      </div>
 
-      <div className="mt-5 flex items-center justify-between text-sm">
-        <Link className="font-semibold text-slate-700" href="/register">
-          Register notes
-        </Link>
-        <span className="font-semibold text-emerald-700">Next: {nextPath}</span>
+        <p className="text-center text-xs leading-5 text-muted-foreground">
+          Next destination after sign in:{" "}
+          <span className="font-semibold text-foreground">{nextPath}</span>
+        </p>
       </div>
-
-      <p className="mt-4 text-xs leading-5 text-slate-500">
-        Local development requires valid Supabase environment variables before
-        the Google flow can start.
-      </p>
     </Card>
   );
 }

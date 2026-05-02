@@ -1,10 +1,10 @@
 export const APP_NAME = "PoupaMarket";
 export const APP_SHORT_NAME = "PoupaMarket";
 export const APP_DESCRIPTION =
-  "Plan grocery lists and estimate savings across nearby markets.";
+  "Plan grocery lists, compare nearby markets, and spot your savings clearly.";
 export const APP_TAGLINE =
-  "Plan smarter grocery trips and estimate potential savings across nearby markets.";
-export const APP_THEME_COLOR = "#16a34a";
+  "A calm, mobile-first grocery savings app for planning lists and comparing nearby markets.";
+export const APP_THEME_COLOR = "#1f8a5b";
 export const APP_BACKGROUND_COLOR = "#ffffff";
 
 export const APP_ROUTES = {

@@ -9,7 +9,7 @@ import {
 import "./globals.css";
 
 const manrope = Manrope({
-  variable: "--font-manrope",
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
@@ -74,10 +74,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="min-h-dvh bg-background text-foreground">
         {children}
       </body>

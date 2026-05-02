@@ -1,34 +1,65 @@
-import type { ButtonHTMLAttributes } from "react";
-import { cn } from "@/lib/utils/cn";
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+import { cn } from "@/lib/utils"
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-}
+const buttonVariants = cva(
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent font-semibold transition-all outline-none select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground shadow-[0_10px_25px_rgba(31,138,91,0.22)] hover:bg-[color:var(--primary-strong)] hover:shadow-[0_12px_30px_rgba(31,138,91,0.28)]",
+        outline:
+          "border-border bg-card text-foreground hover:bg-accent hover:text-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/85",
+        ghost:
+          "bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground",
+        destructive:
+          "bg-destructive text-white shadow-[0_8px_20px_rgba(217,93,57,0.22)] hover:bg-[#c85231]",
+        link: "rounded-none px-0 text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-11 px-5 text-sm",
+        xs: "h-8 px-3 text-xs",
+        sm: "h-9 px-4 text-sm",
+        lg: "h-12 px-6 text-base",
+        icon: "size-[2.75rem] rounded-2xl",
+        "icon-xs": "size-8 rounded-2xl",
+        "icon-sm": "size-9 rounded-2xl",
+        "icon-lg": "size-12 rounded-[1.35rem]",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-700",
-  secondary:
-    "border border-slate-200 bg-white text-slate-800 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700",
-  ghost: "bg-transparent text-slate-700 hover:bg-slate-100",
-};
-
-export function Button({
+function Button({
   className,
-  variant = "primary",
+  variant = "default",
+  size = "default",
+  asChild = false,
   ...props
-}: ButtonProps) {
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
   return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold",
-        "disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none",
-        variantClasses[variant],
-        className,
-      )}
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
-  );
+  )
 }
+
+export { Button, buttonVariants }

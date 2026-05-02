@@ -1,9 +1,12 @@
 "use client";
 
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { APP_NAME } from "@/constants/app";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/Card";
 
 export default function Error({
   error,
@@ -18,29 +21,35 @@ export default function Error({
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[var(--shadow)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-600">
-          {APP_NAME} error state
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-          Something interrupted this screen
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Phase 0 keeps the fallback simple so we can recover fast while the app
-          foundation is still growing.
-        </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Button className="sm:flex-1" onClick={() => unstable_retry()}>
+      <Card className="w-full max-w-md gap-5 rounded-[2rem] px-8 py-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-destructive/10 text-destructive">
+          <AlertTriangle className="size-5" />
+        </div>
+        <div className="space-y-2">
+          <Badge className="w-fit rounded-full px-3 py-1" variant="secondary">
+            {APP_NAME}
+          </Badge>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            Something interrupted this screen
+          </h1>
+          <p className="text-sm leading-6 text-muted-foreground">
+            The UI is designed to recover cleanly. You can retry this screen or
+            step back into the dashboard without losing the current app shell.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button className="sm:flex-1" onClick={() => unstable_retry()} size="lg">
             Try again
           </Button>
           <Link
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary"
             href="/dashboard"
           >
+            <ArrowLeft className="size-4" />
             Back to dashboard
           </Link>
         </div>
-      </div>
+      </Card>
     </main>
   );
 }

@@ -1,34 +1,42 @@
+import { Compass } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/Card";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[var(--shadow)] backdrop-blur-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">
-          404
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-          This route is not part of PoupaMarket yet
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          The page may have moved, or it may belong to a future phase that has
-          not been implemented yet.
-        </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <Card className="w-full max-w-md gap-5 rounded-[2rem] px-8 py-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-secondary text-primary">
+          <Compass className="size-5" />
+        </div>
+        <div className="space-y-2">
+          <Badge className="w-fit rounded-full px-3 py-1" variant="secondary">
+            404
+          </Badge>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            This screen is not available yet
+          </h1>
+          <p className="text-sm leading-6 text-muted-foreground">
+            The route may have moved, or it may belong to a future product flow
+            that is not part of the current UI foundation.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Link
-            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-700"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_10px_25px_rgba(31,138,91,0.22)] hover:bg-[color:var(--primary-strong)]"
             href="/dashboard"
           >
             Open dashboard
           </Link>
           <Link
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+            className="inline-flex items-center justify-center rounded-full border border-border px-4 py-3 text-sm font-semibold text-foreground hover:bg-secondary"
             href="/login"
           >
-            Visit auth placeholder
+            Visit login
           </Link>
         </div>
-      </div>
+      </Card>
     </main>
   );
 }

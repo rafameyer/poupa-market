@@ -23,77 +23,77 @@ export const MAIN_NAVIGATION: NavigationItem[] = [
   {
     href: APP_ROUTES.dashboard,
     label: "Home",
-    description: "Overview and quick access to the main planning routes.",
+    description: "Savings, nearby markets, and quick actions.",
     icon: "home",
   },
   {
     href: APP_ROUTES.lists,
     label: "Lists",
-    description: "Future shopping list management.",
+    description: "Shopping plans, cadence, and compare-ready lists.",
     icon: "lists",
   },
   {
     href: APP_ROUTES.compare,
     label: "Compare",
-    description: "Future savings comparison results.",
+    description: "Compare nearby market totals and estimated savings.",
     icon: "compare",
   },
   {
     href: APP_ROUTES.markets,
     label: "Markets",
-    description: "Favorite stores and market data.",
+    description: "Favorite markets, details, and travel radius.",
     icon: "markets",
   },
   {
     href: APP_ROUTES.settings,
-    label: "Settings",
-    description: "Preferences, install help, and future account controls.",
+    label: "You",
+    description: "Account, household, and shopping preferences.",
     icon: "settings",
   },
 ];
 
 const PAGE_META: Record<string, PageMeta> = {
   [APP_ROUTES.dashboard]: {
-    title: "Welcome back",
+    title: "Dashboard",
     description:
-      "Use the foundation screens to verify routes, mobile layout, and the Phase 0 shell.",
+      "Keep weekly savings, spending, and your next grocery decision in one calm place.",
   },
   [APP_ROUTES.lists]: {
     title: "Shopping lists",
     description:
-      "A local-first home for recurring grocery plans and future list totals.",
+      "Shape recent, pending, and completed grocery plans with a clean mobile flow.",
   },
   [APP_ROUTES.products]: {
     title: "Products",
     description:
-      "Prepare the catalog structure for products, units, and categories.",
+      "Prepare reusable grocery items without crowding the core shopping flow.",
   },
   [APP_ROUTES.markets]: {
-    title: "Markets",
+    title: "Nearby markets",
     description:
-      "Keep favorite markets, addresses, and distance preferences ready for future data.",
+      "Keep favorite stores, distance context, and detail previews close at hand.",
   },
   [APP_ROUTES.prices]: {
     title: "Prices",
     description:
-      "Reserve the route for manual price capture before comparison logic arrives.",
+      "Reserve space for future price capture without complicating the current experience.",
   },
   [APP_ROUTES.compare]: {
-    title: "Compare savings",
+    title: "Compare markets",
     description:
-      "This screen will eventually highlight the cheapest market and estimated savings.",
+      "Compare basket totals, browse matches, and review savings history in a mobile-first way.",
   },
   [APP_ROUTES.settings]: {
     title: "Settings",
     description:
-      "Manage preferences, install guidance, and later sync-related controls.",
+      "Manage location, household preferences, and your current PoupaMarket profile.",
   },
 };
 
 const FALLBACK_PAGE_META: PageMeta = {
   title: "PoupaMarket",
   description:
-    "Plan grocery trips with a mobile-first, local-first Progressive Web App foundation.",
+    "Plan grocery trips with a mobile-first savings experience.",
 };
 
 export function getPageMeta(pathname?: string | null): PageMeta {

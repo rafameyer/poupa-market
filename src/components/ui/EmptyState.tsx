@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/badge";
 
 interface EmptyStateProps {
   eyebrow?: string;
@@ -15,17 +16,15 @@ export function EmptyState({
   children,
 }: EmptyStateProps) {
   return (
-    <Card>
-      {eyebrow ? (
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
-          {eyebrow}
+    <Card className="gap-5">
+      {eyebrow ? <Badge className="w-fit rounded-full px-3 py-1" variant="secondary">{eyebrow}</Badge> : null}
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          {description}
         </p>
-      ) : null}
-      <h2 className="mt-3 text-2xl font-semibold text-slate-950">{title}</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-        {description}
-      </p>
-      {children ? <div className="mt-5">{children}</div> : null}
+      </div>
+      {children ? <div>{children}</div> : null}
     </Card>
   );
 }

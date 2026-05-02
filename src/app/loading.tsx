@@ -1,22 +1,24 @@
 import { APP_NAME } from "@/constants/app";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/Card";
 
 export default function Loading() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-6">
-      <div className="w-full max-w-sm rounded-[2rem] border border-white/70 bg-white/85 p-8 text-center shadow-[var(--shadow)] backdrop-blur-xl">
-        <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-emerald-700 text-xl font-semibold text-white shadow-lg shadow-emerald-900/20">
+      <Card className="w-full max-w-sm items-center gap-4 rounded-[2rem] px-8 py-8 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-primary text-xl font-semibold text-primary-foreground shadow-[0_14px_32px_rgba(31,138,91,0.22)]">
           PM
         </div>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+        <Badge className="rounded-full px-3 py-1 text-[11px] tracking-[0.22em]" variant="secondary">
           {APP_NAME}
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold text-slate-900">
+        </Badge>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Loading your shopping planner...
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Preparing the local-first foundation and opening your next grocery plan.
+        <p className="text-sm leading-6 text-muted-foreground">
+          Preparing your mobile planning space and opening the next grocery flow.
         </p>
-      </div>
+      </Card>
     </main>
   );
 }
