@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { APP_ROUTES } from "@/constants/app";
+import { hasCompletedRegistration } from "@/lib/auth/user-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -19,7 +21,7 @@ export default async function LoginPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect("/dashboard");
+    redirect(hasCompletedRegistration(user) ? APP_ROUTES.dashboard : APP_ROUTES.register);
   }
 
   return (

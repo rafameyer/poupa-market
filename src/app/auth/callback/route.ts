@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
+import { APP_ROUTES } from "@/constants/app";
+import {
+  hasCompletedRegistration,
+  sanitizeNextPath,
+} from "@/lib/auth/user-profile";
 import { createServerSupabaseRouteClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? APP_ROUTES.dashboard;
   const authError = searchParams.get("error");
   const authErrorDescription = searchParams.get("error_description");
-  const safeNext = next.startsWith("/") ? next : "/dashboard";
+  const safeNext = sanitizeNextPath(next);
 
   if (authError) {
     const message = authErrorDescription
@@ -21,10 +26,14 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createServerSupabaseRouteClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(new URL(safeNext, origin));
+      const destination = hasCompletedRegistration(data.user)
+        ? safeNext
+        : `${APP_ROUTES.register}?next=${encodeURIComponent(safeNext)}`;
+
+      return NextResponse.redirect(new URL(destination, origin));
     }
 
     return NextResponse.redirect(

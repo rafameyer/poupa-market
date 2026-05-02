@@ -28,6 +28,8 @@ export function LoginForm({
       provider: "google",
       options: {
         redirectTo,
+        scopes:
+          "openid email profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
       },
     });
 

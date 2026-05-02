@@ -1,7 +1,13 @@
 import { logout } from "@/app/(app)/settings/actions";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageContainer } from "@/components/app/PageContainer";
+import { APP_ROUTES } from "@/constants/app";
+import {
+  getUserProfileDraft,
+  hasCompletedRegistration,
+} from "@/lib/auth/user-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -10,12 +16,10 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const fullName =
-    user?.user_metadata.full_name ??
-    user?.user_metadata.name ??
-    user?.email ??
-    "Authenticated user";
-  const avatarUrl = user?.user_metadata.avatar_url as string | undefined;
+  const profile = getUserProfileDraft(user);
+  const fullName = profile.fullName || user?.email || "Authenticated user";
+  const avatarUrl = profile.avatarUrl;
+  const profileCompleted = hasCompletedRegistration(user);
 
   return (
     <PageContainer>
@@ -46,14 +50,59 @@ export default async function SettingsPage() {
             </div>
           </div>
 
+          <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-slate-200 bg-white/70 p-4 text-sm text-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium text-slate-500">Registration status</span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                {profileCompleted ? "Complete" : "Needs review"}
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Full name
+                </p>
+                <p className="mt-1 text-base text-slate-900">{profile.fullName || "Not set yet"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Age
+                </p>
+                <p className="mt-1 text-base text-slate-900">{profile.age || "Not set yet"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Country
+                </p>
+                <p className="mt-1 text-base text-slate-900">
+                  {profile.country || "Not set yet"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Email
+                </p>
+                <p className="mt-1 text-base text-slate-900">{profile.email || "Not available"}</p>
+              </div>
+            </div>
+            <div>
+              <Link
+                className="font-semibold text-emerald-700"
+                href={APP_ROUTES.register}
+              >
+                Review signup details
+              </Link>
+            </div>
+          </div>
+
           <div className="mt-6 grid gap-3 rounded-[1.5rem] bg-slate-50 p-4 text-sm text-slate-600">
             <p>
-              This Phase 0.4 implementation adds authenticated session handling
-              and protects the main app routes.
+              This onboarding-aware auth flow now stores the first profile fields
+              directly in Supabase Auth metadata.
             </p>
             <p>
-              Grocery CRUD, user profile tables, and richer settings stay out of
-              scope for now.
+              Richer profile editing, grocery CRUD, and dedicated profile tables
+              still stay out of scope for now.
             </p>
           </div>
 

@@ -72,7 +72,8 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 After the environment variables are configured, use the `/login` route to start
-Google authentication.
+Google authentication. First-time users are routed through `/register` after the
+Google step to confirm their profile details before the protected app opens.
 
 ### Lint
 
@@ -171,6 +172,8 @@ High-level setup:
 4. Create Google Cloud OAuth credentials.
 5. Add local and production redirect URLs in Supabase.
 6. Use `/login` and click `Continue with Google`.
+7. If the Google account is new to PoupaMarket, finish the lightweight signup
+   step in `/register`.
 
 Detailed setup instructions are in [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md).
 

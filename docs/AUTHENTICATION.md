@@ -10,6 +10,7 @@ Next.js App Router.
 - Supabase browser and server client helpers
 - Google OAuth sign-in from `/login`
 - an auth callback route at `/auth/callback`
+- a first-time signup completion flow at `/register`
 - protected main app routes under `(app)`
 - logout support
 - a basic authenticated user area in `/settings`
@@ -123,10 +124,11 @@ https://*-rafameyer.vercel.app/**
 Current behavior:
 
 - `/login` is public
-- `/register` is public
+- `/register` is available publicly, but only authenticated users can complete the onboarding form there
 - `/dashboard`, `/lists`, `/products`, `/markets`, `/prices`, `/compare`, and `/settings` are protected
 - unauthenticated users are redirected to `/login`
-- authenticated users visiting `/login` are redirected to `/dashboard`
+- authenticated users with incomplete profile data are redirected to `/register`
+- authenticated users with completed profile data are redirected to `/dashboard`
 
 ## Login flow
 
@@ -136,7 +138,23 @@ Current behavior:
 4. Google redirects back through Supabase.
 5. Supabase redirects to `/auth/callback`.
 6. The app exchanges the auth code for a session.
-7. The user is redirected into the app, usually `/dashboard`.
+7. If the user still needs profile details, the app redirects to `/register`.
+8. After the lightweight signup step, the user enters the protected app.
+
+## Signup completion fields
+
+The first-time signup step stores a lightweight profile in Supabase Auth user
+metadata:
+
+- full name
+- email from Google Auth
+- age
+- country
+
+Name and email are prefilled from Google when available. Country is prefilled
+from the browser locale when we can infer it safely. Age stays editable because
+standard Google OpenID scopes do not reliably provide an exact age without
+requesting additional sensitive scopes.
 
 ## Logout flow
 

@@ -16,7 +16,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <p className="mt-3 text-sm leading-6 text-slate-600">{APP_TAGLINE}</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Google sign-in is enabled through Supabase Auth for this phase. The
-            public auth routes stay outside the protected main app shell.
+            public auth routes stay outside the protected main app shell, and
+            first-time users finish a lightweight signup step after Google login.
           </p>
         </div>
         {children}
