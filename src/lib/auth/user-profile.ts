@@ -121,12 +121,7 @@ export function hasCompletedRegistration(user: UserLike) {
   const metadata = getMetadata(user);
   const draft = getUserProfileDraft(user);
 
-  return (
-    metadata.profile_completed === true &&
-    Boolean(draft.fullName) &&
-    Boolean(draft.age) &&
-    Boolean(draft.country)
-  );
+  return metadata.profile_completed === true && Boolean(draft.fullName);
 }
 
 export function sanitizeNextPath(next: string | null | undefined) {

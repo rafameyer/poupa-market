@@ -1,26 +1,23 @@
 "use client";
 
 import {
-  AlertTriangle,
   ArrowRight,
-  Check,
   LoaderCircle,
   Plus,
   RefreshCcw,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ParseShoppingListResponse } from "@/features/list-parser/types";
+import { useAppMessages, useAppPreferences } from "@/features/preferences/provider";
 import {
   createShoppingListFromDraft,
   getShoppingListsWithItems,
@@ -28,57 +25,30 @@ import {
 } from "@/features/shopping-lists/storage";
 import { APP_ROUTES } from "@/constants/app";
 import {
-  SHOPPING_ITEM_CATEGORIES,
   type ParsedShoppingItem,
-  type ShoppingItemCategory,
   type ShoppingListDraft,
   type ShoppingListFrequency,
   type ShoppingListScope,
 } from "@/types/shopping-list";
 import { Badge } from "@/components/ui/badge";
 
-const SAMPLE_LIST_TEXT = "sugar, flour, salt, rice, milk, eggs";
-const FREQUENCY_OPTIONS: { label: string; value: ShoppingListFrequency }[] = [
-  { label: "Weekly", value: "weekly" },
-  { label: "Biweekly", value: "biweekly" },
-  { label: "Monthly", value: "monthly" },
-  { label: "One-off", value: "one-off" },
+const SAMPLE_LIST_TEXT = "milk, eggs, rice";
+const FREQUENCY_ORDER: ShoppingListFrequency[] = [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "one-off",
 ];
-const RADIUS_OPTIONS = ["1", "5", "10", "20", "custom"] as const;
-const COMPLETED_PLACEHOLDERS = [
-  {
-    name: "Family pantry refill",
-    cadence: "Monthly",
-    items: "26 items",
-    note: "Saved an estimated €12.40 before checkout.",
-  },
-];
+const RADIUS_ORDER = [1, 5, 10, 20] as const;
 
 interface BuilderState {
-  name: string;
   frequency: ShoppingListFrequency;
   marketScope: ShoppingListScope;
-  radiusChoice: (typeof RADIUS_OPTIONS)[number];
-  customRadiusKm: string;
+  radiusKm: number;
   sourceText: string;
 }
 
-function getInitialBuilderState(): BuilderState {
-  return {
-    name: "",
-    frequency: "weekly",
-    marketScope: "favorites",
-    radiusChoice: "10",
-    customRadiusKm: "",
-    sourceText: SAMPLE_LIST_TEXT,
-  };
-}
-
-function formatFrequencyLabel(value: ShoppingListFrequency) {
-  return FREQUENCY_OPTIONS.find((option) => option.value === value)?.label ?? value;
-}
-
-function buildDefaultListName(frequency: ShoppingListFrequency) {
+function getDefaultListName(frequency: ShoppingListFrequency) {
   const labels: Record<ShoppingListFrequency, string> = {
     weekly: "Weekly grocery run",
     biweekly: "Biweekly grocery run",
@@ -89,181 +59,96 @@ function buildDefaultListName(frequency: ShoppingListFrequency) {
   return labels[frequency];
 }
 
-function getRadiusValue(state: BuilderState) {
-  const rawValue = state.radiusChoice === "custom" ? state.customRadiusKm : state.radiusChoice;
-  const parsed = Number(rawValue);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function normalizeReviewItems(items: ParsedShoppingItem[]) {
-  return items.filter((item) => item.name.trim().length > 0);
-}
-
-function formatItemSummary(list: ShoppingListWithItems) {
-  return `${list.items.length} item${list.items.length === 1 ? "" : "s"}`;
-}
-
-function ListCard({ list }: { list: ShoppingListWithItems }) {
-  return (
-    <Card className="gap-4">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <Badge className="rounded-full px-3 py-1" variant="secondary">
-              {formatFrequencyLabel(list.list.frequency)}
-            </Badge>
-            <CardTitle>{list.list.name}</CardTitle>
-            <CardDescription>{formatItemSummary(list)}</CardDescription>
-          </div>
-          <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            {list.list.radiusKm} km
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm leading-6 text-muted-foreground">
-          {list.list.marketScope === "favorites"
-            ? "Favorite markets only"
-            : "All nearby markets"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {list.items.slice(0, 3).map((item) => (
-            <Badge className="rounded-full px-3 py-1" key={item.id} variant="secondary">
-              {item.name}
-            </Badge>
-          ))}
-          {list.items.length > 3 ? (
-            <Badge className="rounded-full px-3 py-1" variant="secondary">
-              +{list.items.length - 3} more
-            </Badge>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ReviewItemCard({
+function ReviewRow({
   item,
   onChange,
   onRemove,
+  quantityLabel,
+  unitLabel,
 }: {
   item: ParsedShoppingItem;
   onChange: (itemId: string, field: keyof ParsedShoppingItem, value: string) => void;
   onRemove: (itemId: string) => void;
+  quantityLabel: string;
+  unitLabel: string;
 }) {
   return (
-    <Card className="gap-4" size="sm">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-[15px]">{item.name || "Untitled item"}</CardTitle>
-            <CardDescription>{item.rawText}</CardDescription>
-          </div>
-          <Button
-            aria-label={`Remove ${item.name || "item"}`}
-            onClick={() => onRemove(item.id)}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3">
+    <div className="rounded-[1.35rem] border border-border bg-card px-4 py-4">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_auto]">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground" htmlFor={`item-name-${item.id}`}>
-            Item name
+          <label className="sr-only" htmlFor={`item-${item.id}`}>
+            Item
           </label>
           <Input
-            className="h-11 rounded-[1.2rem] bg-card px-4"
-            id={`item-name-${item.id}`}
+            className="h-11 rounded-[1.1rem] bg-secondary px-4"
+            id={`item-${item.id}`}
             onChange={(event) => onChange(item.id, "name", event.target.value)}
+            placeholder="milk"
             type="text"
             value={item.name}
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor={`item-quantity-${item.id}`}>
-              Quantity
-            </label>
-            <Input
-              className="h-11 rounded-[1.2rem] bg-card px-4"
-              id={`item-quantity-${item.id}`}
-              inputMode="decimal"
-              onChange={(event) => onChange(item.id, "quantity", event.target.value)}
-              placeholder="Optional"
-              type="text"
-              value={item.quantity ?? ""}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor={`item-unit-${item.id}`}>
-              Unit
-            </label>
-            <Input
-              className="h-11 rounded-[1.2rem] bg-card px-4"
-              id={`item-unit-${item.id}`}
-              onChange={(event) => onChange(item.id, "unit", event.target.value)}
-              placeholder="kg, pcs, pack..."
-              type="text"
-              value={item.unit ?? ""}
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="sr-only" htmlFor={`item-quantity-${item.id}`}>
+            {quantityLabel}
+          </label>
+          <Input
+            className="h-11 rounded-[1.1rem] bg-secondary px-4"
+            id={`item-quantity-${item.id}`}
+            inputMode="decimal"
+            onChange={(event) => onChange(item.id, "quantity", event.target.value)}
+            placeholder={quantityLabel}
+            type="text"
+            value={item.quantity ?? ""}
+          />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor={`item-category-${item.id}`}>
-              Category
-            </label>
-            <select
-              className="h-11 w-full rounded-[1.2rem] border border-input bg-card px-4 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              id={`item-category-${item.id}`}
-              onChange={(event) => onChange(item.id, "category", event.target.value)}
-              value={item.category}
-            >
-              {SHOPPING_ITEM_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category.replaceAll("-", " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground" htmlFor={`item-notes-${item.id}`}>
-              Notes
-            </label>
-            <Input
-              className="h-11 rounded-[1.2rem] bg-card px-4"
-              id={`item-notes-${item.id}`}
-              onChange={(event) => onChange(item.id, "notes", event.target.value)}
-              placeholder="Whole wheat, low fat..."
-              type="text"
-              value={item.notes ?? ""}
-            />
-          </div>
+        <div className="space-y-2">
+          <label className="sr-only" htmlFor={`item-unit-${item.id}`}>
+            {unitLabel}
+          </label>
+          <Input
+            className="h-11 rounded-[1.1rem] bg-secondary px-4"
+            id={`item-unit-${item.id}`}
+            onChange={(event) => onChange(item.id, "unit", event.target.value)}
+            placeholder={unitLabel}
+            type="text"
+            value={item.unit ?? ""}
+          />
         </div>
-      </CardContent>
-    </Card>
+
+        <Button
+          aria-label={`Remove ${item.name || "item"}`}
+          className="h-11 px-3"
+          onClick={() => onRemove(item.id)}
+          type="button"
+          variant="ghost"
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
 export function ShoppingListsWorkspace() {
   const router = useRouter();
-  const [builder, setBuilder] = useState<BuilderState>(getInitialBuilderState);
+  const messages = useAppMessages();
+  const { preferences, updatePreferences } = useAppPreferences();
+  const [builder, setBuilder] = useState<BuilderState>({
+    frequency: "weekly",
+    marketScope: preferences.favoriteMarkets.length > 0 ? "favorites" : "all",
+    radiusKm: preferences.radiusKm,
+    sourceText: SAMPLE_LIST_TEXT,
+  });
   const [shoppingLists, setShoppingLists] = useState<ShoppingListWithItems[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState<ShoppingListDraft | null>(null);
+  const [reviewName, setReviewName] = useState("");
 
   useEffect(() => {
     async function loadLists() {
@@ -276,9 +161,76 @@ export function ShoppingListsWorkspace() {
     void loadLists();
   }, []);
 
-  const recentLists = shoppingLists.slice(0, 4);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setBuilder((current) => ({
+        ...current,
+        radiusKm: preferences.radiusKm,
+        marketScope:
+          preferences.favoriteMarkets.length > 0
+            ? current.marketScope
+            : "all",
+      }));
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [preferences.favoriteMarkets.length, preferences.radiusKm]);
+
+  const recentLists = shoppingLists.slice(0, 3);
   const pendingLists = shoppingLists.filter((entry) => entry.list.status !== "completed");
   const completedLists = shoppingLists.filter((entry) => entry.list.status === "completed");
+
+  const frequencyLabelMap: Record<ShoppingListFrequency, string> = {
+    weekly: messages.common.weekly,
+    biweekly: messages.common.biweekly,
+    monthly: messages.common.monthly,
+    "one-off": messages.common.oneOff,
+  };
+
+  const marketScopeLabel =
+    builder.marketScope === "favorites" ? messages.common.favorites : messages.common.nearby;
+
+  function cycleFrequency() {
+    setBuilder((current) => {
+      const index = FREQUENCY_ORDER.indexOf(current.frequency);
+      return {
+        ...current,
+        frequency: FREQUENCY_ORDER[(index + 1) % FREQUENCY_ORDER.length],
+      };
+    });
+  }
+
+  function cycleRadius() {
+    setBuilder((current) => {
+      const index = RADIUS_ORDER.indexOf(current.radiusKm as (typeof RADIUS_ORDER)[number]);
+      const radiusKm = RADIUS_ORDER[(index + 1) % RADIUS_ORDER.length];
+
+      updatePreferences({ radiusKm });
+
+      return {
+        ...current,
+        radiusKm,
+      };
+    });
+  }
+
+  function toggleMarketScope() {
+    setBuilder((current) => {
+      const nextScope: ShoppingListScope =
+        current.marketScope === "favorites" || preferences.favoriteMarkets.length === 0
+          ? "all"
+          : "favorites";
+
+      updatePreferences({
+        marketScope: nextScope === "favorites" ? "favorites" : "nearby",
+      });
+
+      return {
+        ...current,
+        marketScope: nextScope,
+      };
+    });
+  }
 
   async function refreshLists() {
     const storedLists = await getShoppingListsWithItems();
@@ -287,15 +239,9 @@ export function ShoppingListsWorkspace() {
 
   async function handleBuildList() {
     const trimmedText = builder.sourceText.trim();
-    const radiusKm = getRadiusValue(builder);
 
     if (!trimmedText) {
-      setParseError("Add a few grocery items before building the list.");
-      return;
-    }
-
-    if (!radiusKm) {
-      setParseError("Choose a valid radius in kilometers before continuing.");
+      setParseError("Add a few items first.");
       return;
     }
 
@@ -318,18 +264,21 @@ export function ShoppingListsWorkspace() {
         return;
       }
 
+      const defaultName = getDefaultListName(builder.frequency);
+
+      setReviewName(defaultName);
       setReviewDraft({
-        name: builder.name.trim() || buildDefaultListName(builder.frequency),
+        name: defaultName,
         frequency: builder.frequency,
         marketScope: builder.marketScope,
-        radiusKm,
+        radiusKm: builder.radiusKm,
         sourceText: trimmedText,
         parsedItems: payload.items,
         parseProvider: payload.provider,
         parseWarning: payload.warning,
       });
     } catch {
-      setParseError("We could not parse that list right now. Please try again in a moment.");
+      setParseError("We could not build your list.");
     } finally {
       setIsParsing(false);
     }
@@ -362,31 +311,10 @@ export function ShoppingListsWorkspace() {
             };
           }
 
-          if (field === "category") {
-            return {
-              ...item,
-              category: value as ShoppingItemCategory,
-            };
-          }
-
           if (field === "unit") {
             return {
               ...item,
               unit: value.trim() || null,
-            };
-          }
-
-          if (field === "notes") {
-            return {
-              ...item,
-              notes: value.trim() || null,
-            };
-          }
-
-          if (field === "normalizedName") {
-            return {
-              ...item,
-              normalizedName: value.trim().toLowerCase(),
             };
           }
 
@@ -442,18 +370,17 @@ export function ShoppingListsWorkspace() {
       return;
     }
 
-    const cleanedItems = normalizeReviewItems(
-      reviewDraft.parsedItems.map((item) => ({
+    const parsedItems = reviewDraft.parsedItems
+      .map((item) => ({
         ...item,
-        normalizedName: item.normalizedName.trim().toLowerCase() || item.name.trim().toLowerCase(),
         name: item.name.trim(),
+        normalizedName: item.name.trim().toLowerCase(),
         unit: item.unit?.trim().toLowerCase() || null,
-        notes: item.notes?.trim() || null,
-      })),
-    );
+      }))
+      .filter((item) => item.name.length > 0);
 
-    if (cleanedItems.length === 0) {
-      setParseError("Keep at least one grocery item before saving the list.");
+    if (parsedItems.length === 0) {
+      setParseError("Keep at least one item.");
       return;
     }
 
@@ -463,237 +390,67 @@ export function ShoppingListsWorkspace() {
     try {
       const created = await createShoppingListFromDraft({
         ...reviewDraft,
-        parsedItems: cleanedItems,
+        name: reviewName.trim() || getDefaultListName(reviewDraft.frequency),
+        parsedItems,
       });
 
       setReviewDraft(null);
-      setBuilder(getInitialBuilderState());
+      setReviewName("");
+      setBuilder((current) => ({
+        ...current,
+        sourceText: "",
+      }));
       await refreshLists();
       router.push(`${APP_ROUTES.compare}?listId=${created.list.id}`);
     } catch {
-      setParseError("We could not save your list locally. Please try again.");
+      setParseError("We could not save your list.");
     } finally {
       setIsSaving(false);
     }
   }
 
+  const listTabs = [
+    { key: "recent", label: messages.lists.recent, lists: recentLists, empty: messages.lists.noRecent, emptySubtitle: messages.lists.noRecentSubtitle },
+    { key: "pending", label: messages.lists.pending, lists: pendingLists, empty: messages.lists.noPending, emptySubtitle: messages.lists.noPendingSubtitle },
+    { key: "completed", label: messages.lists.completed, lists: completedLists, empty: messages.lists.completed, emptySubtitle: "" },
+  ] as const;
+
   return (
     <div className="space-y-6">
-      <Tabs className="gap-4" defaultValue="recent">
-        <TabsList className="h-auto rounded-full bg-secondary p-1" variant="default">
-          <TabsTrigger className="rounded-full px-4 py-2 data-active:bg-card" value="recent">
-            Recent
-          </TabsTrigger>
-          <TabsTrigger className="rounded-full px-4 py-2 data-active:bg-card" value="pending">
-            Pending
-          </TabsTrigger>
-          <TabsTrigger className="rounded-full px-4 py-2 data-active:bg-card" value="completed">
-            Completed
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent className="grid gap-4 md:grid-cols-2" value="recent">
-          {!isHydrated
-            ? [0, 1].map((entry) => (
-                <Card className="gap-4" key={entry}>
-                  <Skeleton className="h-5 w-20 rounded-full" />
-                  <Skeleton className="h-6 w-40" />
-                  <Skeleton className="h-20 w-full rounded-[1.2rem]" />
-                </Card>
-              ))
-            : recentLists.length > 0
-              ? recentLists.map((list) => <ListCard key={list.list.id} list={list} />)
-              : (
-                <EmptyState
-                  description="Your saved shopping lists will appear here once you build and confirm them."
-                  eyebrow="Recent"
-                  title="No recent lists yet"
-                />
-              )}
-        </TabsContent>
-
-        <TabsContent className="grid gap-4 md:grid-cols-2" value="pending">
-          {!isHydrated
-            ? [0, 1].map((entry) => (
-                <Card className="gap-4" key={entry}>
-                  <Skeleton className="h-5 w-20 rounded-full" />
-                  <Skeleton className="h-6 w-40" />
-                  <Skeleton className="h-20 w-full rounded-[1.2rem]" />
-                </Card>
-              ))
-            : pendingLists.length > 0
-              ? pendingLists.map((list) => <ListCard key={list.list.id} list={list} />)
-              : (
-                <EmptyState
-                  description="Build a new list from free text and it will stay here until comparison and future checkout steps."
-                  eyebrow="Pending"
-                  title="Nothing pending yet"
-                />
-              )}
-        </TabsContent>
-
-        <TabsContent className="grid gap-4 md:grid-cols-2" value="completed">
-          {completedLists.length > 0
-            ? completedLists.map((list) => <ListCard key={list.list.id} list={list} />)
-            : COMPLETED_PLACEHOLDERS.map((list) => (
-                <Card className="gap-4" key={list.name}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <Badge className="rounded-full px-3 py-1" variant="secondary">
-                          {list.cadence}
-                        </Badge>
-                        <CardTitle>{list.name}</CardTitle>
-                        <CardDescription>{list.items}</CardDescription>
-                      </div>
-                      <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                        History
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-6 text-muted-foreground">{list.note}</p>
-                  </CardContent>
-                </Card>
-              ))}
-        </TabsContent>
-      </Tabs>
-
       {!reviewDraft ? (
         <Card className="gap-5">
           <CardHeader>
             <Badge className="w-fit rounded-full px-3 py-1" variant="secondary">
-              Create shopping list
+              {messages.lists.smartDefaults}
             </Badge>
-            <CardTitle className="text-2xl">Build a grocery list from free text</CardTitle>
-            <CardDescription>
-              Type the list the way you naturally think about it. We&apos;ll turn it into
-              structured grocery items, then let you review everything before saving.
-            </CardDescription>
+            <CardTitle className="text-[2rem]">{messages.lists.title}</CardTitle>
           </CardHeader>
-
           <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="list-name">
-                List name
-              </label>
-              <Input
-                className="h-12 rounded-[1.3rem] bg-card px-4"
-                id="list-name"
-                onChange={(event) =>
-                  setBuilder((current) => ({ ...current, name: event.target.value }))
-                }
-                placeholder="Optional. We can name it for you."
-                type="text"
-                value={builder.name}
-              />
-            </div>
+            <Textarea
+              className="min-h-36 text-base"
+              id="shopping-list-text"
+              onChange={(event) =>
+                setBuilder((current) => ({ ...current, sourceText: event.target.value }))
+              }
+              placeholder={messages.lists.listPlaceholder}
+              value={builder.sourceText}
+            />
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Shopping type</p>
-              <ToggleGroup
-                className="flex flex-wrap gap-2"
-                onValueChange={(value) =>
-                  value &&
-                  setBuilder((current) => ({
-                    ...current,
-                    frequency: value as ShoppingListFrequency,
-                  }))
-                }
-                type="single"
-                value={builder.frequency}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={cycleFrequency} type="button" variant="outline">
+                {frequencyLabelMap[builder.frequency]}
+              </Button>
+              <Button onClick={cycleRadius} type="button" variant="outline">
+                {builder.radiusKm} {messages.common.kilometers}
+              </Button>
+              <Button
+                disabled={preferences.favoriteMarkets.length === 0}
+                onClick={toggleMarketScope}
+                type="button"
+                variant="outline"
               >
-                {FREQUENCY_OPTIONS.map((option) => (
-                  <ToggleGroupItem className="rounded-full px-4" key={option.value} value={option.value}>
-                    {option.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Market scope</p>
-              <ToggleGroup
-                onValueChange={(value) =>
-                  value &&
-                  setBuilder((current) => ({
-                    ...current,
-                    marketScope: value as ShoppingListScope,
-                  }))
-                }
-                type="single"
-                value={builder.marketScope}
-              >
-                <ToggleGroupItem className="rounded-full px-4" value="favorites">
-                  Favorite markets only
-                </ToggleGroupItem>
-                <ToggleGroupItem className="rounded-full px-4" value="all">
-                  All markets
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">Nearby radius</p>
-              <ToggleGroup
-                className="flex flex-wrap gap-2"
-                onValueChange={(value) =>
-                  value &&
-                  setBuilder((current) => ({
-                    ...current,
-                    radiusChoice: value as BuilderState["radiusChoice"],
-                  }))
-                }
-                type="single"
-                value={builder.radiusChoice}
-              >
-                {RADIUS_OPTIONS.map((value) => (
-                  <ToggleGroupItem className="rounded-full px-4" key={value} value={value}>
-                    {value === "custom" ? "Custom" : `${value} km`}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-
-              {builder.radiusChoice === "custom" ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground" htmlFor="custom-radius">
-                    Custom radius in km
-                  </label>
-                  <Input
-                    className="h-12 rounded-[1.3rem] bg-card px-4"
-                    id="custom-radius"
-                    inputMode="decimal"
-                    onChange={(event) =>
-                      setBuilder((current) => ({
-                        ...current,
-                        customRadiusKm: event.target.value,
-                      }))
-                    }
-                    placeholder="15"
-                    type="text"
-                    value={builder.customRadiusKm}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="shopping-list-text">
-                Grocery list
-              </label>
-              <Textarea
-                className="min-h-36"
-                id="shopping-list-text"
-                onChange={(event) =>
-                  setBuilder((current) => ({ ...current, sourceText: event.target.value }))
-                }
-                placeholder="sugar, flour, salt, rice, milk, eggs"
-                value={builder.sourceText}
-              />
-              <p className="text-sm leading-6 text-muted-foreground">
-                Separate items with commas or line breaks. We only parse and organize the
-                list here, without prices or market data yet.
-              </p>
+                {marketScopeLabel}
+              </Button>
             </div>
 
             {parseError ? (
@@ -701,17 +458,6 @@ export function ShoppingListsWorkspace() {
                 {parseError}
               </div>
             ) : null}
-
-            <div className="rounded-[1.4rem] bg-secondary px-4 py-4 text-sm leading-6 text-muted-foreground">
-              <div className="flex items-center gap-2 font-medium text-foreground">
-                <Sparkles className="size-4 text-primary" />
-                AI only helps with parsing and normalization.
-              </div>
-              <p className="mt-2">
-                No prices, maps, or market comparisons are generated in this step. You&apos;ll
-                review every item before we save the draft locally.
-              </p>
-            </div>
 
             <Button
               className="h-12 w-full text-base"
@@ -723,11 +469,11 @@ export function ShoppingListsWorkspace() {
               {isParsing ? (
                 <>
                   <LoaderCircle className="size-4 animate-spin" />
-                  Building your list
+                  {messages.lists.building}
                 </>
               ) : (
                 <>
-                  Build my list
+                  {messages.lists.build}
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -736,64 +482,44 @@ export function ShoppingListsWorkspace() {
         </Card>
       ) : (
         <div className="space-y-4">
-          <Card className="gap-5">
+          <Card className="gap-4">
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full px-3 py-1" variant="secondary">
-                  Review parsed items
+                  {messages.lists.looksGood}
                 </Badge>
                 <Badge className="rounded-full px-3 py-1" variant="secondary">
-                  {formatFrequencyLabel(reviewDraft.frequency)}
+                  {frequencyLabelMap[reviewDraft.frequency]}
                 </Badge>
                 <Badge className="rounded-full px-3 py-1" variant="secondary">
-                  {reviewDraft.radiusKm} km
+                  {reviewDraft.radiusKm} {messages.common.kilometers}
                 </Badge>
               </div>
-              <CardTitle className="text-2xl">{reviewDraft.name}</CardTitle>
-              <CardDescription>
-                Confirm the parsed groceries below, fix anything that looks off, then save
-                the draft and continue into compare markets.
-              </CardDescription>
+              <CardTitle>{messages.lists.looksGood}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Input
+                className="h-12 rounded-[1.2rem] bg-secondary px-4"
+                onChange={(event) => setReviewName(event.target.value)}
+                placeholder={messages.lists.listNamePlaceholder}
+                type="text"
+                value={reviewName}
+              />
+
               {reviewDraft.parseWarning ? (
-                <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
-                  <div className="flex items-center gap-2 font-medium">
-                    <AlertTriangle className="size-4" />
-                    Backup parser used
-                  </div>
-                  <p className="mt-2">{reviewDraft.parseWarning}</p>
+                <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                  {messages.lists.backupParser}
                 </div>
-              ) : (
-                <div className="rounded-[1.35rem] border border-primary/10 bg-primary/5 px-4 py-4 text-sm leading-6 text-foreground">
-                  <div className="flex items-center gap-2 font-medium">
-                    <Check className="size-4 text-primary" />
-                    AI parsing completed
-                  </div>
-                  <p className="mt-2 text-muted-foreground">
-                    The list was parsed with structured output. You can still edit every item
-                    before saving.
-                  </p>
-                </div>
-              )}
+              ) : null}
 
-              <div className="rounded-[1.35rem] bg-secondary px-4 py-4 text-sm leading-6 text-muted-foreground">
-                <span className="font-medium text-foreground">Original text:</span>{" "}
-                {reviewDraft.sourceText}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  onClick={() => setReviewDraft(null)}
-                  type="button"
-                  variant="outline"
-                >
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setReviewDraft(null)} type="button" variant="outline">
                   <RefreshCcw className="size-4" />
-                  Edit original text
+                  {messages.lists.editList}
                 </Button>
                 <Button onClick={handleAddItem} type="button" variant="ghost">
                   <Plus className="size-4" />
-                  Add item manually
+                  {messages.lists.addItem}
                 </Button>
               </div>
             </CardContent>
@@ -801,11 +527,13 @@ export function ShoppingListsWorkspace() {
 
           <div className="space-y-3">
             {reviewDraft.parsedItems.map((item) => (
-              <ReviewItemCard
+              <ReviewRow
                 item={item}
                 key={item.id}
                 onChange={handleReviewItemChange}
                 onRemove={handleRemoveReviewItem}
+                quantityLabel={messages.lists.quantity}
+                unitLabel={messages.lists.unit}
               />
             ))}
           </div>
@@ -826,17 +554,68 @@ export function ShoppingListsWorkspace() {
             {isSaving ? (
               <>
                 <LoaderCircle className="size-4 animate-spin" />
-                Saving your list
+                {messages.common.loading}...
               </>
             ) : (
               <>
-                Confirm list and continue
+                {messages.common.comparePrices}
                 <ArrowRight className="size-4" />
               </>
             )}
           </Button>
         </div>
       )}
+
+      <Tabs className="gap-4" defaultValue="recent">
+        <TabsList className="h-auto rounded-full bg-secondary p-1" variant="default">
+          {listTabs.map((tab) => (
+            <TabsTrigger className="rounded-full px-4 py-2 data-active:bg-card" key={tab.key} value={tab.key}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {listTabs.map((tab) => (
+          <TabsContent className="grid gap-4 md:grid-cols-2" key={tab.key} value={tab.key}>
+            {!isHydrated ? (
+              [0, 1].map((entry) => (
+                <Card className="gap-4" key={entry}>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-20 w-full rounded-[1.2rem]" />
+                </Card>
+              ))
+            ) : tab.lists.length > 0 ? (
+              tab.lists.map((list) => (
+                <Card className="gap-4" key={list.list.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <Badge className="rounded-full px-3 py-1" variant="secondary">
+                          {frequencyLabelMap[list.list.frequency]}
+                        </Badge>
+                        <CardTitle>{list.list.name}</CardTitle>
+                      </div>
+                      <Badge className="rounded-full px-3 py-1" variant="secondary">
+                        {list.list.radiusKm} {messages.common.kilometers}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    {list.items.slice(0, 3).map((item) => (
+                      <Badge className="rounded-full px-3 py-1" key={item.id} variant="secondary">
+                        {item.name}
+                      </Badge>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <EmptyState description={tab.emptySubtitle || undefined} title={tab.empty} />
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }

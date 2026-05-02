@@ -6,6 +6,8 @@ import {
   getUserMetadata,
   sanitizeNextPath,
 } from "@/lib/auth/user-profile";
+import { getMessages } from "@/lib/i18n/messages";
+import { getRequestLocale } from "@/lib/i18n/server";
 import { createServerSupabaseRouteClient } from "@/lib/supabase/server";
 
 export interface CompleteRegistrationState {
@@ -16,28 +18,15 @@ export async function completeRegistration(
   _previousState: CompleteRegistrationState,
   formData: FormData,
 ): Promise<CompleteRegistrationState> {
+  const locale = await getRequestLocale();
+  const messages = getMessages(locale);
   const fullName = String(formData.get("fullName") ?? "").trim();
-  const ageInput = String(formData.get("age") ?? "").trim();
   const country = String(formData.get("country") ?? "").trim();
   const nextPath = sanitizeNextPath(String(formData.get("next") ?? APP_ROUTES.dashboard));
 
   if (fullName.length < 2) {
     return {
-      message: "Please enter your full name before continuing.",
-    };
-  }
-
-  const age = Number(ageInput);
-
-  if (!Number.isInteger(age) || age < 13 || age > 120) {
-    return {
-      message: "Please enter an age between 13 and 120.",
-    };
-  }
-
-  if (country.length < 2) {
-    return {
-      message: "Please confirm your country before continuing.",
+      message: messages.auth.fullNameError,
     };
   }
 
@@ -55,7 +44,6 @@ export async function completeRegistration(
       ...getUserMetadata(user),
       full_name: fullName,
       name: fullName,
-      age,
       country,
       profile_completed: true,
       profile_completed_at: new Date().toISOString(),
@@ -64,7 +52,7 @@ export async function completeRegistration(
 
   if (error) {
     return {
-      message: `We could not save your profile yet: ${error.message}`,
+      message: `${messages.common.save}: ${error.message}`,
     };
   }
 

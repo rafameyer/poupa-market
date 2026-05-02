@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface PageIntroProps {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   actions?: ReactNode;
   className?: string;
 }
@@ -29,9 +29,11 @@ export function PageIntro({
           <h1 className="text-[2rem] font-semibold tracking-tight text-foreground sm:text-[2.35rem]">
             {title}
           </h1>
-          <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
-            {description}
-          </p>
+          {description ? (
+            <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
+              {description}
+            </p>
+          ) : null}
         </div>
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}

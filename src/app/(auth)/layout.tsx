@@ -10,23 +10,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <Badge className="rounded-full px-3 py-1 text-[11px] tracking-[0.22em]" variant="secondary">
             {APP_NAME}
           </Badge>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-              Grocery savings, made simpler.
-            </h1>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Sign in with Google, set your shopping preferences, and keep the
-              experience centered on nearby markets, clear totals, and calm mobile
-              flows.
-            </p>
-          </div>
         </div>
         {children}
       </div>
-      <p className="safe-bottom pt-4 text-center text-xs leading-5 text-muted-foreground">
-        Google authentication is already connected through Supabase and your
-        protected routes will stay intact after sign in.
-      </p>
+      <div className="safe-bottom pt-4" />
     </div>
   );
 }

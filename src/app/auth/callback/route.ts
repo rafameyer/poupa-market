@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { APP_ROUTES } from "@/constants/app";
-import {
-  hasCompletedRegistration,
-  sanitizeNextPath,
-} from "@/lib/auth/user-profile";
+import { sanitizeNextPath } from "@/lib/auth/user-profile";
 import { createServerSupabaseRouteClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -29,9 +26,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const destination = hasCompletedRegistration(data.user)
-        ? safeNext
-        : `${APP_ROUTES.register}?next=${encodeURIComponent(safeNext)}`;
+      const destination = data.user ? safeNext : APP_ROUTES.login;
 
       return NextResponse.redirect(new URL(destination, origin));
     }

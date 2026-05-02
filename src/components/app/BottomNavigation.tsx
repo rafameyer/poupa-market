@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MAIN_NAVIGATION, type NavigationIconName } from "@/constants/navigation";
+import { useAppMessages } from "@/features/preferences/provider";
 import { cn } from "@/lib/utils";
 
 function NavigationIcon({
@@ -39,6 +40,7 @@ function NavigationIcon({
 
 export function BottomNavigation() {
   const pathname = usePathname();
+  const messages = useAppMessages();
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4">
@@ -66,7 +68,7 @@ export function BottomNavigation() {
                 >
                   <NavigationIcon icon={item.icon} />
                 </div>
-                <span>{item.label}</span>
+                <span>{messages.navigation[item.labelKey]}</span>
               </Link>
             );
           })}

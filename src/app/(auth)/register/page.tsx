@@ -43,7 +43,6 @@ export default async function RegisterPage({
 
   return (
     <RegistrationOnboardingForm
-      initialAge={profileDraft.age}
       initialCountry={initialCountry}
       initialEmail={profileDraft.email}
       initialFullName={profileDraft.fullName}

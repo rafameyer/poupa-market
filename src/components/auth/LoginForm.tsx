@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingCarousel } from "@/components/auth/OnboardingCarousel";
+import { useAppMessages } from "@/features/preferences/provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 interface LoginFormProps {
@@ -20,6 +21,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const messages = useAppMessages();
 
   async function signInWithGoogle() {
     setIsSubmitting(true);
@@ -38,7 +40,7 @@ export function LoginForm({
     if (error) {
       setIsSubmitting(false);
       router.push(
-        `/login?message=${encodeURIComponent("Google sign-in could not be started.")}`,
+        `/login?message=${encodeURIComponent(messages.auth.googleError)}`,
       );
     }
   }
@@ -47,16 +49,13 @@ export function LoginForm({
     <Card className="min-h-[34rem] gap-5 rounded-[2rem] px-6 py-6">
       <div className="space-y-3">
         <Badge className="rounded-full px-3 py-1" variant="secondary">
-          Welcome back
+          {messages.auth.welcome}
         </Badge>
         <div className="space-y-2">
           <h2 className="text-[2rem] font-semibold tracking-tight text-foreground">
-            Continue with Google
+            {messages.auth.title}
           </h2>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Start with your Google account, then step into a cleaner mobile
-            planning flow for lists, nearby markets, and savings.
-          </p>
+          <p className="text-sm leading-6 text-muted-foreground">{messages.auth.subtitle}</p>
         </div>
       </div>
 
@@ -69,7 +68,7 @@ export function LoginForm({
         </div>
       ) : null}
 
-      <div className="mt-auto space-y-4 pt-4">
+      <div className="mt-auto space-y-3 pt-4">
         <Button
           className="h-12 w-full text-base"
           disabled={isSubmitting}
@@ -77,19 +76,13 @@ export function LoginForm({
           size="lg"
           type="button"
         >
-          {isSubmitting ? "Redirecting to Google..." : "Continue with Google"}
+          {isSubmitting ? messages.auth.redirecting : messages.auth.button}
         </Button>
 
         <div className="flex items-start gap-3 rounded-[1.35rem] bg-secondary px-4 py-3 text-sm leading-6 text-secondary-foreground">
           <LockKeyhole className="mt-0.5 size-4 shrink-0 text-primary" />
-          After Google authentication, PoupaMarket brings you back into the app
-          and keeps the current protected route flow working as it does today.
+          Google keeps your sign-in fast.
         </div>
-
-        <p className="text-center text-xs leading-5 text-muted-foreground">
-          Next destination after sign in:{" "}
-          <span className="font-semibold text-foreground">{nextPath}</span>
-        </p>
       </div>
     </Card>
   );

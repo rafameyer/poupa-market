@@ -6,6 +6,8 @@ import {
   APP_TAGLINE,
   APP_THEME_COLOR,
 } from "@/constants/app";
+import { AppPreferencesProvider } from "@/features/preferences/provider";
+import { getRequestLocale } from "@/lib/i18n/server";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -68,15 +70,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getRequestLocale();
+
   return (
-    <html lang="en" className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang={locale} className={`${manrope.variable} ${plexMono.variable} h-full antialiased`}>
       <body className="min-h-dvh bg-background text-foreground">
-        {children}
+        <AppPreferencesProvider initialLocale={locale}>
+          {children}
+        </AppPreferencesProvider>
       </body>
     </html>
   );

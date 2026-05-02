@@ -1,10 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { APP_ROUTES } from "@/constants/app";
-import {
-  hasCompletedRegistration,
-  sanitizeNextPath,
-} from "@/lib/auth/user-profile";
+import { sanitizeNextPath } from "@/lib/auth/user-profile";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 const PROTECTED_PREFIXES = [
@@ -57,7 +54,6 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname, search } = request.nextUrl;
   const requestedPath = `${pathname}${search}`;
-  const isRegistrationPath = pathname === APP_ROUTES.register;
   const isLoginPath = pathname === APP_ROUTES.login;
 
   if (!user && isProtectedPath(pathname)) {
@@ -71,36 +67,10 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  const profileCompleted = hasCompletedRegistration(user);
-
-  if (!profileCompleted && isProtectedPath(pathname)) {
-    const registrationUrl = request.nextUrl.clone();
-    registrationUrl.pathname = APP_ROUTES.register;
-    registrationUrl.searchParams.set("next", requestedPath);
-    return NextResponse.redirect(registrationUrl);
-  }
-
-  if (!profileCompleted && isLoginPath) {
-    const registrationUrl = request.nextUrl.clone();
-    registrationUrl.pathname = APP_ROUTES.register;
-    registrationUrl.searchParams.set(
-      "next",
-      sanitizeNextPath(request.nextUrl.searchParams.get("next")),
-    );
-    return NextResponse.redirect(registrationUrl);
-  }
-
-  if (profileCompleted && isRegistrationPath) {
+  if (isLoginPath) {
     return NextResponse.redirect(
       new URL(sanitizeNextPath(request.nextUrl.searchParams.get("next")), request.url),
     );
-  }
-
-  if (profileCompleted && isLoginPath) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = APP_ROUTES.dashboard;
-    dashboardUrl.search = "";
-    return NextResponse.redirect(dashboardUrl);
   }
 
   return response;
