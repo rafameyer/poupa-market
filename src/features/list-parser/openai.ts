@@ -1,6 +1,7 @@
 import { DEFAULT_LIST_PARSER_MODEL } from "@/features/list-parser/constants";
 import { shoppingListParserSchema } from "@/features/list-parser/schema";
 import { addItemIds, extractStructuredPayload } from "@/features/list-parser/validate";
+import type { AppLocale } from "@/lib/i18n/config";
 import type { ParsedShoppingItem } from "@/types/shopping-list";
 
 interface OpenAIParseResult {
@@ -17,6 +18,7 @@ function getOpenAIConfig() {
 
 export async function parseShoppingListWithOpenAI(
   text: string,
+  locale?: AppLocale,
 ): Promise<OpenAIParseResult | null> {
   const { apiKey, model } = getOpenAIConfig();
 
@@ -37,14 +39,14 @@ export async function parseShoppingListWithOpenAI(
         {
           role: "system",
           content:
-            "You parse grocery shopping lists into structured JSON. Never invent prices, stores, brands, or quantities. If quantity or unit is not explicit, return null. Keep normalizedName concise, lowercase, and generic. Use only the allowed categories.",
+            "You parse grocery shopping lists into structured JSON for a mobile grocery savings app. Never invent prices, stores, brands, or market data. Infer sensible grocery quantities and units when the user did not provide them: milk 1 L, eggs 12 unit, rice/flour/sugar/salt 1 kg, chicken 1 kg, bananas 1 kg, bread 1 unit, toilet paper 1 pack, detergent 1 bottle, olive oil 1 L. Use confidence high, medium, or low. Set needsReview true when the item is ambiguous or quantity/unit may need a quick tap. Add concise suggestionGroups only for useful clarification, quantity, or unit choices. Keep normalizedName lowercase and generic. Use only the allowed enum values.",
         },
         {
           role: "user",
-          content: `Parse this grocery shopping list into structured items:\n\n${text}`,
+          content: `Locale: ${locale ?? "en"}\nParse this grocery shopping list into structured items:\n\n${text}`,
         },
       ],
-      max_output_tokens: 1200,
+      max_output_tokens: 2200,
       text: {
         format: {
           type: "json_schema",

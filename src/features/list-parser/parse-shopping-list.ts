@@ -1,5 +1,6 @@
 import { fallbackParseShoppingList } from "@/features/list-parser/fallback";
 import { parseShoppingListWithOpenAI } from "@/features/list-parser/openai";
+import type { AppLocale } from "@/lib/i18n/config";
 import type { ParseProvider, ParsedShoppingItem } from "@/types/shopping-list";
 
 interface ParseShoppingListResult {
@@ -8,9 +9,12 @@ interface ParseShoppingListResult {
   warning: string | null;
 }
 
-export async function parseShoppingList(text: string): Promise<ParseShoppingListResult> {
+export async function parseShoppingList(
+  text: string,
+  locale?: AppLocale,
+): Promise<ParseShoppingListResult> {
   try {
-    const parsed = await parseShoppingListWithOpenAI(text);
+    const parsed = await parseShoppingListWithOpenAI(text, locale);
 
     if (parsed && parsed.items.length > 0) {
       return {
@@ -24,9 +28,8 @@ export async function parseShoppingList(text: string): Promise<ParseShoppingList
   }
 
   return {
-    items: fallbackParseShoppingList(text),
+    items: fallbackParseShoppingList(text, locale),
     provider: "fallback",
-    warning:
-      "We used the backup parser this time, so double-check quantities and categories before saving.",
+    warning: "madeDraft",
   };
 }

@@ -1,0 +1,194 @@
+name: Safe AI Auto Merge
+
+on:
+  pull_request_target:
+    types:
+      - labeled
+      - opened
+      - ready_for_review
+      - reopened
+      - synchronize
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to evaluate
+        required: true
+        type: number
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  issues: write
+  pull-requests: write
+  statuses: read
+
+concurrency:
+  group: safe-ai-auto-merge-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  safe-ai-auto-merge:
+    name: Evaluate and merge safe AI PR
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_PROJECT_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+      PROJECT_ID: ${{ vars.POUPAMARKET_PROJECT_ID }}
+      PROJECT_STATUS_FIELD_ID: ${{ vars.POUPAMARKET_PROJECT_STATUS_FIELD_ID }}
+      PROJECT_STATUS_COMPLETED_OPTION_ID: ${{ vars.POUPAMARKET_PROJECT_STATUS_COMPLETED_OPTION_ID }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+    steps:
+      - name: Gate and merge
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OWNER="${REPO%%/*}"
+          REPO_NAME="${REPO#*/}"
+          AUTO_MERGE_COMMENT="Merged by the Safe AI Auto Merge workflow after the PR passed the safe-to-merge gates."
+
+          fail_gate() {
+            echo "Safe auto-merge skipped: $1"
+            exit 0
+          }
+
+          pr_json="$(gh pr view "$PR_NUMBER" \
+            --repo "$REPO" \
+            --json author,baseRefName,body,closingIssuesReferences,files,headRefName,isDraft,labels,mergeStateStatus,number,title,url)"
+
+          title="$(jq -r '.title' <<<"$pr_json")"
+          head_ref="$(jq -r '.headRefName' <<<"$pr_json")"
+          is_draft="$(jq -r '.isDraft' <<<"$pr_json")"
+          merge_state="$(jq -r '.mergeStateStatus' <<<"$pr_json")"
+          has_safe_label="$(jq -r '[.labels[].name] | index("safe-to-merge") != null' <<<"$pr_json")"
+
+          echo "Evaluating PR #$PR_NUMBER: $title"
+          echo "Head branch: $head_ref"
+          echo "Merge state: $merge_state"
+
+          [[ "$has_safe_label" == "true" ]] || fail_gate "missing safe-to-merge label"
+          [[ "$head_ref" == ai/* ]] || fail_gate "branch does not start with ai/"
+          [[ "$is_draft" == "false" ]] || fail_gate "PR is still a draft"
+          [[ "$merge_state" == "CLEAN" ]] || fail_gate "required checks are not passing or branch protection is not satisfied"
+
+          is_sensitive_file() {
+            local file="$1"
+
+            case "$file" in
+              .env|.env.*|*/.env|*/.env.*) return 0 ;;
+              .github/workflows/*) return 0 ;;
+              supabase/migrations/*|supabase/policies/*|*/supabase/migrations/*|*/supabase/policies/*) return 0 ;;
+              *policy*.sql|*policies*.sql) return 0 ;;
+              src/app/auth/*|src/app/\(auth\)/*|src/lib/auth/*|src/lib/supabase/*|*auth*|*Auth*) return 0 ;;
+              *payment*|*Payment*|*payments*|*Payments*|*billing*|*Billing*|*stripe*|*Stripe*|*checkout*|*Checkout*) return 0 ;;
+              vercel.json|netlify.toml|fly.toml|render.yaml|railway.json|now.json|Procfile) return 0 ;;
+              next.config.*|Dockerfile|docker-compose.*|package.json|package-lock.json|pnpm-lock.yaml|yarn.lock) return 0 ;;
+            esac
+
+            return 1
+          }
+
+          mapfile -t changed_files < <(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          sensitive_files=()
+
+          for file in "${changed_files[@]}"; do
+            if is_sensitive_file "$file"; then
+              sensitive_files+=("$file")
+            fi
+          done
+
+          if (( ${#sensitive_files[@]} > 0 )); then
+            {
+              echo "Safe auto-merge blocked because this PR touches sensitive files:"
+              printf '\n'
+              for file in "${sensitive_files[@]}"; do
+                echo "- \`$file\`"
+              done
+              printf '\n'
+              echo "Please review and merge this PR manually."
+            } > /tmp/sensitive-comment.md
+
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/sensitive-comment.md
+            fail_gate "PR touches sensitive files"
+          fi
+
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --delete-branch
+
+          mapfile -t related_issues < <(jq -r '.closingIssuesReferences[].number' <<<"$pr_json")
+
+          cleanup_issue_labels() {
+            local issue_number="$1"
+            gh issue edit "$issue_number" --repo "$REPO" --remove-label "ai-in-progress" >/dev/null 2>&1 || true
+            gh issue edit "$issue_number" --repo "$REPO" --remove-label "ai-review" >/dev/null 2>&1 || true
+          }
+
+          mark_project_completed() {
+            local issue_number="$1"
+
+            if [[ -z "${GH_PROJECT_TOKEN:-}" || -z "${PROJECT_ID:-}" || -z "${PROJECT_STATUS_FIELD_ID:-}" || -z "${PROJECT_STATUS_COMPLETED_OPTION_ID:-}" ]]; then
+              echo "Project completion skipped for #$issue_number because project token or project IDs are not configured."
+              return 0
+            fi
+
+            local project_items item_id
+            project_items="$(GH_TOKEN="$GH_PROJECT_TOKEN" gh api graphql \
+              -f owner="$OWNER" \
+              -f repo="$REPO_NAME" \
+              -F number="$issue_number" \
+              -f query='
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) {
+                      projectItems(first: 50) {
+                        nodes {
+                          id
+                          project { id }
+                        }
+                      }
+                    }
+                  }
+                }
+              ')"
+
+            item_id="$(jq -r --arg project_id "$PROJECT_ID" '.data.repository.issue.projectItems.nodes[]? | select(.project.id == $project_id) | .id' <<<"$project_items" | head -n 1)"
+
+            if [[ -z "$item_id" ]]; then
+              echo "Project completion skipped for #$issue_number because no matching project item was found."
+              return 0
+            fi
+
+            GH_TOKEN="$GH_PROJECT_TOKEN" gh api graphql \
+              -f projectId="$PROJECT_ID" \
+              -f itemId="$item_id" \
+              -f fieldId="$PROJECT_STATUS_FIELD_ID" \
+              -f optionId="$PROJECT_STATUS_COMPLETED_OPTION_ID" \
+              -f query='
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }) {
+                    projectV2Item { id }
+                  }
+                }
+              ' >/dev/null
+          }
+
+          gh issue edit "$PR_NUMBER" --repo "$REPO" --remove-label "ai-in-progress" >/dev/null 2>&1 || true
+          gh issue edit "$PR_NUMBER" --repo "$REPO" --remove-label "ai-review" >/dev/null 2>&1 || true
+
+          if (( ${#related_issues[@]} == 0 )); then
+            echo "No closing issue references were found on the PR."
+            exit 0
+          fi
+
+          for issue_number in "${related_issues[@]}"; do
+            cleanup_issue_labels "$issue_number"
+            gh issue edit "$issue_number" --repo "$REPO" --add-label "completed" >/dev/null 2>&1 || true
+            gh issue comment "$issue_number" --repo "$REPO" --body "$AUTO_MERGE_COMMENT"
+            mark_project_completed "$issue_number"
+          done

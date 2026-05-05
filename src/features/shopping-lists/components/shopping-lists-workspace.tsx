@@ -5,34 +5,41 @@ import {
   LoaderCircle,
   Plus,
   RefreshCcw,
-  Trash2,
+  Save,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { APP_ROUTES } from "@/constants/app";
+import { createParsedShoppingItem, normalizeItemName } from "@/features/list-parser/inference";
 import type { ParseShoppingListResponse } from "@/features/list-parser/types";
 import { useAppMessages, useAppPreferences } from "@/features/preferences/provider";
+import { AiItemCard } from "@/features/shopping-lists/components/ai-item-card";
+import { ShoppingListCard } from "@/features/shopping-lists/components/shopping-list-card";
 import {
   createShoppingListFromDraft,
   getShoppingListsWithItems,
+  mapShoppingListItemToParsed,
+  updateShoppingListWithItems,
   type ShoppingListWithItems,
 } from "@/features/shopping-lists/storage";
-import { APP_ROUTES } from "@/constants/app";
 import {
+  type ItemSuggestionOption,
   type ParsedShoppingItem,
+  type ShoppingItemUnit,
   type ShoppingListDraft,
   type ShoppingListFrequency,
   type ShoppingListScope,
+  type ShoppingListStatus,
 } from "@/types/shopping-list";
-import { Badge } from "@/components/ui/badge";
 
-const SAMPLE_LIST_TEXT = "milk, eggs, rice";
 const FREQUENCY_ORDER: ShoppingListFrequency[] = [
   "weekly",
   "biweekly",
@@ -48,99 +55,42 @@ interface BuilderState {
   sourceText: string;
 }
 
-function getDefaultListName(frequency: ShoppingListFrequency) {
-  const labels: Record<ShoppingListFrequency, string> = {
-    weekly: "Weekly grocery run",
-    biweekly: "Biweekly grocery run",
-    monthly: "Monthly pantry refill",
-    "one-off": "One-off grocery run",
-  };
-
-  return labels[frequency];
+function getDefaultListName(defaultName: string) {
+  return defaultName;
 }
 
-function ReviewRow({
-  item,
-  onChange,
-  onRemove,
-  quantityLabel,
-  unitLabel,
-}: {
-  item: ParsedShoppingItem;
-  onChange: (itemId: string, field: keyof ParsedShoppingItem, value: string) => void;
-  onRemove: (itemId: string) => void;
-  quantityLabel: string;
-  unitLabel: string;
-}) {
-  return (
-    <div className="rounded-[1.35rem] border border-border bg-card px-4 py-4">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_auto]">
-        <div className="space-y-2">
-          <label className="sr-only" htmlFor={`item-${item.id}`}>
-            Item
-          </label>
-          <Input
-            className="h-11 rounded-[1.1rem] bg-secondary px-4"
-            id={`item-${item.id}`}
-            onChange={(event) => onChange(item.id, "name", event.target.value)}
-            placeholder="milk"
-            type="text"
-            value={item.name}
-          />
-        </div>
+function normalizeReviewItems(items: ParsedShoppingItem[]) {
+  return items
+    .map((item) => {
+      const name = item.name.trim();
 
-        <div className="space-y-2">
-          <label className="sr-only" htmlFor={`item-quantity-${item.id}`}>
-            {quantityLabel}
-          </label>
-          <Input
-            className="h-11 rounded-[1.1rem] bg-secondary px-4"
-            id={`item-quantity-${item.id}`}
-            inputMode="decimal"
-            onChange={(event) => onChange(item.id, "quantity", event.target.value)}
-            placeholder={quantityLabel}
-            type="text"
-            value={item.quantity ?? ""}
-          />
-        </div>
+      return {
+        ...item,
+        originalText: item.originalText || item.rawText || name,
+        rawText: item.rawText || item.originalText || name,
+        name,
+        normalizedName: normalizeItemName(name),
+        quantity: item.quantity > 0 ? item.quantity : 1,
+        unit: item.unit,
+        suggestionGroups: item.suggestionGroups ?? [],
+      };
+    })
+    .filter((item) => item.name.length > 0);
+}
 
-        <div className="space-y-2">
-          <label className="sr-only" htmlFor={`item-unit-${item.id}`}>
-            {unitLabel}
-          </label>
-          <Input
-            className="h-11 rounded-[1.1rem] bg-secondary px-4"
-            id={`item-unit-${item.id}`}
-            onChange={(event) => onChange(item.id, "unit", event.target.value)}
-            placeholder={unitLabel}
-            type="text"
-            value={item.unit ?? ""}
-          />
-        </div>
-
-        <Button
-          aria-label={`Remove ${item.name || "item"}`}
-          className="h-11 px-3"
-          onClick={() => onRemove(item.id)}
-          type="button"
-          variant="ghost"
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-    </div>
-  );
+function formatReviewCount(template: string, count: number) {
+  return template.replace("{count}", String(count));
 }
 
 export function ShoppingListsWorkspace() {
   const router = useRouter();
   const messages = useAppMessages();
-  const { preferences, updatePreferences } = useAppPreferences();
+  const { locale, preferences, updatePreferences } = useAppPreferences();
   const [builder, setBuilder] = useState<BuilderState>({
     frequency: "weekly",
     marketScope: preferences.favoriteMarkets.length > 0 ? "favorites" : "all",
     radiusKm: preferences.radiusKm,
-    sourceText: SAMPLE_LIST_TEXT,
+    sourceText: "",
   });
   const [shoppingLists, setShoppingLists] = useState<ShoppingListWithItems[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -149,6 +99,33 @@ export function ShoppingListsWorkspace() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState<ShoppingListDraft | null>(null);
   const [reviewName, setReviewName] = useState("");
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingStatus, setEditingStatus] = useState<ShoppingListStatus>("active");
+
+  const frequencyLabelMap: Record<ShoppingListFrequency, string> = {
+    weekly: messages.common.weekly,
+    biweekly: messages.common.biweekly,
+    monthly: messages.common.monthly,
+    "one-off": messages.common.oneOff,
+  };
+
+  const statusLabelMap: Record<ShoppingListStatus, string> = {
+    draft: messages.lists.needsCheck,
+    active: messages.lists.active,
+    completed: messages.lists.completed,
+  };
+
+  const marketScopeLabel =
+    builder.marketScope === "favorites" ? messages.common.favorites : messages.common.nearby;
+
+  const reviewCount =
+    reviewDraft?.parsedItems.filter(
+      (item) => item.needsReview || item.suggestionGroups.length > 0,
+    ).length ?? 0;
+
+  const recentLists = shoppingLists.slice(0, 3);
+  const activeLists = shoppingLists.filter((entry) => entry.list.status !== "completed");
+  const completedLists = shoppingLists.filter((entry) => entry.list.status === "completed");
 
   useEffect(() => {
     async function loadLists() {
@@ -167,28 +144,20 @@ export function ShoppingListsWorkspace() {
         ...current,
         radiusKm: preferences.radiusKm,
         marketScope:
-          preferences.favoriteMarkets.length > 0
-            ? current.marketScope
-            : "all",
+          preferences.favoriteMarkets.length > 0 ? current.marketScope : "all",
       }));
     });
 
     return () => window.cancelAnimationFrame(frame);
   }, [preferences.favoriteMarkets.length, preferences.radiusKm]);
 
-  const recentLists = shoppingLists.slice(0, 3);
-  const pendingLists = shoppingLists.filter((entry) => entry.list.status !== "completed");
-  const completedLists = shoppingLists.filter((entry) => entry.list.status === "completed");
-
-  const frequencyLabelMap: Record<ShoppingListFrequency, string> = {
-    weekly: messages.common.weekly,
-    biweekly: messages.common.biweekly,
-    monthly: messages.common.monthly,
-    "one-off": messages.common.oneOff,
-  };
-
-  const marketScopeLabel =
-    builder.marketScope === "favorites" ? messages.common.favorites : messages.common.nearby;
+  function resetReview() {
+    setReviewDraft(null);
+    setReviewName("");
+    setEditingListId(null);
+    setEditingStatus("active");
+    setParseError(null);
+  }
 
   function cycleFrequency() {
     setBuilder((current) => {
@@ -241,7 +210,7 @@ export function ShoppingListsWorkspace() {
     const trimmedText = builder.sourceText.trim();
 
     if (!trimmedText) {
-      setParseError("Add a few items first.");
+      setParseError(messages.lists.addFewItems);
       return;
     }
 
@@ -254,19 +223,21 @@ export function ShoppingListsWorkspace() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: trimmedText }),
+        body: JSON.stringify({ text: trimmedText, locale }),
       });
 
       const payload = (await response.json()) as ParseShoppingListResponse;
 
       if (!payload.ok) {
-        setParseError(payload.error);
+        setParseError(messages.lists.couldNotBuild);
         return;
       }
 
-      const defaultName = getDefaultListName(builder.frequency);
+      const defaultName = getDefaultListName(messages.lists.listNamePlaceholder);
 
       setReviewName(defaultName);
+      setEditingListId(null);
+      setEditingStatus("active");
       setReviewDraft({
         name: defaultName,
         frequency: builder.frequency,
@@ -278,16 +249,15 @@ export function ShoppingListsWorkspace() {
         parseWarning: payload.warning,
       });
     } catch {
-      setParseError("We could not build your list.");
+      setParseError(messages.lists.couldNotBuild);
     } finally {
       setIsParsing(false);
     }
   }
 
-  function handleReviewItemChange(
+  function updateReviewItem(
     itemId: string,
-    field: keyof ParsedShoppingItem,
-    value: string,
+    updater: (item: ParsedShoppingItem) => ParsedShoppingItem,
   ) {
     setReviewDraft((currentDraft) => {
       if (!currentDraft) {
@@ -296,35 +266,71 @@ export function ShoppingListsWorkspace() {
 
       return {
         ...currentDraft,
-        parsedItems: currentDraft.parsedItems.map((item) => {
-          if (item.id !== itemId) {
-            return item;
-          }
-
-          if (field === "quantity") {
-            const trimmedValue = value.trim();
-            const parsedValue = trimmedValue ? Number(trimmedValue.replace(",", ".")) : null;
-
-            return {
-              ...item,
-              quantity: trimmedValue && Number.isFinite(parsedValue) ? parsedValue : null,
-            };
-          }
-
-          if (field === "unit") {
-            return {
-              ...item,
-              unit: value.trim() || null,
-            };
-          }
-
-          return {
-            ...item,
-            [field]: value,
-          };
-        }),
+        parsedItems: currentDraft.parsedItems.map((item) =>
+          item.id === itemId ? updater(item) : item,
+        ),
       };
     });
+  }
+
+  function handleApplySuggestion(
+    itemId: string,
+    groupId: string,
+    option: ItemSuggestionOption,
+  ) {
+    updateReviewItem(itemId, (item) => {
+      const remainingGroups = item.suggestionGroups.filter((group) => group.id !== groupId);
+      const nextItem = {
+        ...item,
+        ...option.updates,
+        suggestionGroups: remainingGroups,
+      };
+
+      return {
+        ...nextItem,
+        needsReview:
+          remainingGroups.length > 0 ? true : option.updates.needsReview ?? false,
+        confidence: option.updates.confidence ?? (remainingGroups.length > 0 ? "medium" : "high"),
+      };
+    });
+  }
+
+  function handleNameChange(itemId: string, name: string) {
+    updateReviewItem(itemId, (item) => ({
+      ...item,
+      name,
+      normalizedName: normalizeItemName(name),
+      rawText: item.rawText || name,
+      needsReview: item.suggestionGroups.length > 0,
+      confidence: item.confidence === "low" ? "medium" : item.confidence,
+    }));
+  }
+
+  function handleQuantityChange(itemId: string, quantity: number) {
+    updateReviewItem(itemId, (item) => ({
+      ...item,
+      quantity: Number(quantity.toFixed(2)),
+      needsReview: item.suggestionGroups.length > 0,
+      confidence: item.confidence === "low" ? "medium" : item.confidence,
+    }));
+  }
+
+  function handleUnitChange(itemId: string, unit: ShoppingItemUnit) {
+    updateReviewItem(itemId, (item) => ({
+      ...item,
+      unit,
+      needsReview: item.suggestionGroups.length > 0,
+      confidence: item.confidence === "low" ? "medium" : item.confidence,
+    }));
+  }
+
+  function handleMarkReviewed(itemId: string) {
+    updateReviewItem(itemId, (item) => ({
+      ...item,
+      needsReview: false,
+      confidence: item.confidence === "low" ? "medium" : item.confidence,
+      suggestionGroups: [],
+    }));
   }
 
   function handleRemoveReviewItem(itemId: string) {
@@ -346,41 +352,52 @@ export function ShoppingListsWorkspace() {
         return currentDraft;
       }
 
+      const item = createParsedShoppingItem(
+        messages.lists.newItem,
+        messages.lists.newItem,
+        { locale },
+      );
+
       return {
         ...currentDraft,
         parsedItems: [
           ...currentDraft.parsedItems,
           {
-            id: crypto.randomUUID(),
-            rawText: "Added manually",
-            name: "",
-            normalizedName: "",
-            quantity: null,
-            unit: null,
-            category: "other",
-            notes: null,
+            ...item,
+            needsReview: true,
+            confidence: "low",
           },
         ],
       };
     });
   }
 
-  async function handleConfirmList() {
+  function handleOpenList(entry: ShoppingListWithItems) {
+    setParseError(null);
+    setEditingListId(entry.list.id);
+    setEditingStatus(entry.list.status);
+    setReviewName(entry.list.name);
+    setReviewDraft({
+      name: entry.list.name,
+      frequency: entry.list.frequency,
+      marketScope: entry.list.marketScope,
+      radiusKm: entry.list.radiusKm,
+      sourceText: entry.list.sourceText,
+      parsedItems: entry.items.map(mapShoppingListItemToParsed),
+      parseProvider: entry.list.parseProvider,
+      parseWarning: entry.list.parseWarning,
+    });
+  }
+
+  async function saveCurrentList(shouldCompare: boolean) {
     if (!reviewDraft) {
       return;
     }
 
-    const parsedItems = reviewDraft.parsedItems
-      .map((item) => ({
-        ...item,
-        name: item.name.trim(),
-        normalizedName: item.name.trim().toLowerCase(),
-        unit: item.unit?.trim().toLowerCase() || null,
-      }))
-      .filter((item) => item.name.length > 0);
+    const parsedItems = normalizeReviewItems(reviewDraft.parsedItems);
 
     if (parsedItems.length === 0) {
-      setParseError("Keep at least one item.");
+      setParseError(messages.lists.keepOneItem);
       return;
     }
 
@@ -388,31 +405,66 @@ export function ShoppingListsWorkspace() {
     setParseError(null);
 
     try {
-      const created = await createShoppingListFromDraft({
-        ...reviewDraft,
-        name: reviewName.trim() || getDefaultListName(reviewDraft.frequency),
-        parsedItems,
-      });
+      const listName =
+        reviewName.trim() ||
+        getDefaultListName(messages.lists.listNamePlaceholder);
+      const saved = editingListId
+        ? await updateShoppingListWithItems(editingListId, {
+            name: listName,
+            frequency: reviewDraft.frequency,
+            marketScope: reviewDraft.marketScope,
+            radiusKm: reviewDraft.radiusKm,
+            status: editingStatus,
+            sourceText: reviewDraft.sourceText,
+            parseProvider: reviewDraft.parseProvider,
+            parseWarning: reviewDraft.parseWarning,
+            parsedItems,
+          })
+        : await createShoppingListFromDraft({
+            ...reviewDraft,
+            name: listName,
+            parsedItems,
+          });
 
-      setReviewDraft(null);
-      setReviewName("");
+      resetReview();
       setBuilder((current) => ({
         ...current,
         sourceText: "",
       }));
       await refreshLists();
-      router.push(`${APP_ROUTES.compare}?listId=${created.list.id}`);
+
+      if (shouldCompare) {
+        router.push(`${APP_ROUTES.compare}?listId=${saved.list.id}`);
+      }
     } catch {
-      setParseError("We could not save your list.");
+      setParseError(messages.lists.couldNotSave);
     } finally {
       setIsSaving(false);
     }
   }
 
   const listTabs = [
-    { key: "recent", label: messages.lists.recent, lists: recentLists, empty: messages.lists.noRecent, emptySubtitle: messages.lists.noRecentSubtitle },
-    { key: "pending", label: messages.lists.pending, lists: pendingLists, empty: messages.lists.noPending, emptySubtitle: messages.lists.noPendingSubtitle },
-    { key: "completed", label: messages.lists.completed, lists: completedLists, empty: messages.lists.completed, emptySubtitle: "" },
+    {
+      key: "recent",
+      label: messages.lists.recent,
+      lists: recentLists,
+      empty: messages.lists.noRecent,
+      emptySubtitle: messages.lists.noRecentSubtitle,
+    },
+    {
+      key: "active",
+      label: messages.lists.active,
+      lists: activeLists,
+      empty: messages.lists.noActive,
+      emptySubtitle: messages.lists.noActiveSubtitle,
+    },
+    {
+      key: "completed",
+      label: messages.lists.completed,
+      lists: completedLists,
+      empty: messages.lists.completed,
+      emptySubtitle: "",
+    },
   ] as const;
 
   return (
@@ -427,7 +479,7 @@ export function ShoppingListsWorkspace() {
           </CardHeader>
           <CardContent className="space-y-5">
             <Textarea
-              className="min-h-36 text-base"
+              className="min-h-40 text-lg leading-7"
               id="shopping-list-text"
               onChange={(event) =>
                 setBuilder((current) => ({ ...current, sourceText: event.target.value }))
@@ -494,12 +546,17 @@ export function ShoppingListsWorkspace() {
                 <Badge className="rounded-full px-3 py-1" variant="secondary">
                   {reviewDraft.radiusKm} {messages.common.kilometers}
                 </Badge>
+                <Badge className="rounded-full px-3 py-1" variant="secondary">
+                  {reviewDraft.marketScope === "favorites"
+                    ? messages.common.favorites
+                    : messages.common.nearby}
+                </Badge>
               </div>
               <CardTitle>{messages.lists.looksGood}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Input
-                className="h-12 rounded-[1.2rem] bg-secondary px-4"
+                className="h-12 rounded-[1.2rem] bg-secondary px-4 text-base font-semibold"
                 onChange={(event) => setReviewName(event.target.value)}
                 placeholder={messages.lists.listNamePlaceholder}
                 type="text"
@@ -512,8 +569,14 @@ export function ShoppingListsWorkspace() {
                 </div>
               ) : null}
 
+              {reviewCount > 0 ? (
+                <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                  {formatReviewCount(messages.lists.reviewItems, reviewCount)}
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setReviewDraft(null)} type="button" variant="outline">
+                <Button onClick={resetReview} type="button" variant="outline">
                   <RefreshCcw className="size-4" />
                   {messages.lists.editList}
                 </Button>
@@ -521,19 +584,43 @@ export function ShoppingListsWorkspace() {
                   <Plus className="size-4" />
                   {messages.lists.addItem}
                 </Button>
+                {editingListId ? (
+                  <Button
+                    disabled={isSaving}
+                    onClick={() => void saveCurrentList(false)}
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Save className="size-4" />
+                    {messages.lists.saveList}
+                  </Button>
+                ) : null}
               </div>
             </CardContent>
           </Card>
 
           <div className="space-y-3">
             {reviewDraft.parsedItems.map((item) => (
-              <ReviewRow
+              <AiItemCard
                 item={item}
                 key={item.id}
-                onChange={handleReviewItemChange}
+                messages={{
+                  suggested: messages.lists.suggested,
+                  needsCheck: messages.lists.needsCheck,
+                  looksGood: messages.lists.looksGood,
+                  missingQuantity: messages.lists.missingQuantity,
+                  removeItem: messages.lists.removeItem,
+                  unit: messages.lists.unit,
+                  whichOne: messages.lists.whichOne,
+                  howMany: messages.lists.howMany,
+                  whichUnit: messages.lists.whichUnit,
+                }}
+                onApplySuggestion={handleApplySuggestion}
+                onMarkReviewed={handleMarkReviewed}
+                onNameChange={handleNameChange}
+                onQuantityChange={handleQuantityChange}
                 onRemove={handleRemoveReviewItem}
-                quantityLabel={messages.lists.quantity}
-                unitLabel={messages.lists.unit}
+                onUnitChange={handleUnitChange}
               />
             ))}
           </div>
@@ -546,8 +633,8 @@ export function ShoppingListsWorkspace() {
 
           <Button
             className="h-12 w-full text-base"
-            disabled={isSaving}
-            onClick={handleConfirmList}
+            disabled={isSaving || reviewCount > 0}
+            onClick={() => void saveCurrentList(true)}
             size="lg"
             type="button"
           >
@@ -556,9 +643,11 @@ export function ShoppingListsWorkspace() {
                 <LoaderCircle className="size-4 animate-spin" />
                 {messages.common.loading}...
               </>
+            ) : reviewCount > 0 ? (
+              formatReviewCount(messages.lists.reviewItems, reviewCount)
             ) : (
               <>
-                {messages.common.comparePrices}
+                {messages.lists.compare}
                 <ArrowRight className="size-4" />
               </>
             )}
@@ -569,7 +658,11 @@ export function ShoppingListsWorkspace() {
       <Tabs className="gap-4" defaultValue="recent">
         <TabsList className="h-auto rounded-full bg-secondary p-1" variant="default">
           {listTabs.map((tab) => (
-            <TabsTrigger className="rounded-full px-4 py-2 data-active:bg-card" key={tab.key} value={tab.key}>
+            <TabsTrigger
+              className="rounded-full px-4 py-2 data-active:bg-card"
+              key={tab.key}
+              value={tab.key}
+            >
               {tab.label}
             </TabsTrigger>
           ))}
@@ -586,29 +679,16 @@ export function ShoppingListsWorkspace() {
                 </Card>
               ))
             ) : tab.lists.length > 0 ? (
-              tab.lists.map((list) => (
-                <Card className="gap-4" key={list.list.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <Badge className="rounded-full px-3 py-1" variant="secondary">
-                          {frequencyLabelMap[list.list.frequency]}
-                        </Badge>
-                        <CardTitle>{list.list.name}</CardTitle>
-                      </div>
-                      <Badge className="rounded-full px-3 py-1" variant="secondary">
-                        {list.list.radiusKm} {messages.common.kilometers}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
-                    {list.items.slice(0, 3).map((item) => (
-                      <Badge className="rounded-full px-3 py-1" key={item.id} variant="secondary">
-                        {item.name}
-                      </Badge>
-                    ))}
-                  </CardContent>
-                </Card>
+              tab.lists.map((entry) => (
+                <ShoppingListCard
+                  entry={entry}
+                  frequencyLabelMap={frequencyLabelMap}
+                  itemsLabel={messages.lists.items}
+                  key={entry.list.id}
+                  kilometersLabel={messages.common.kilometers}
+                  onOpen={() => handleOpenList(entry)}
+                  statusLabelMap={statusLabelMap}
+                />
               ))
             ) : (
               <EmptyState description={tab.emptySubtitle || undefined} title={tab.empty} />

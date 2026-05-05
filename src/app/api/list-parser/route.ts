@@ -4,6 +4,7 @@ import type {
   ParseShoppingListRequest,
   ParseShoppingListResponse,
 } from "@/features/list-parser/types";
+import { APP_LOCALES, type AppLocale } from "@/lib/i18n/config";
 import { createServerSupabaseRouteClient } from "@/lib/supabase/server";
 
 function errorResponse(message: string, status: number) {
@@ -34,12 +35,17 @@ export async function POST(request: Request) {
   }
 
   const text = payload.text?.trim();
+  const locale: AppLocale | undefined = APP_LOCALES.includes(
+    payload.locale as AppLocale,
+  )
+    ? (payload.locale as AppLocale)
+    : undefined;
 
   if (!text) {
     return errorResponse("Add at least one grocery item before building the list.", 422);
   }
 
-  const parsed = await parseShoppingList(text);
+  const parsed = await parseShoppingList(text, locale);
 
   if (parsed.items.length === 0) {
     return errorResponse("We could not find grocery items in that text. Try commas or line breaks.", 422);

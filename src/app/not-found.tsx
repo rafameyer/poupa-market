@@ -15,11 +15,10 @@ export default function NotFound() {
             404
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            This screen is not available yet
+            This screen is not available
           </h1>
           <p className="text-sm leading-6 text-muted-foreground">
-            The route may have moved, or it may belong to a future product flow
-            that is not part of the current UI foundation.
+            The route may have moved. Head back to your dashboard to keep going.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">

@@ -265,6 +265,7 @@ The repository is designed to work well with Codex and Copilot, but the project 
 - [docs/AUTH_STRATEGY.md](./docs/AUTH_STRATEGY.md)
 - [docs/CODEX_WORKFLOW.md](./docs/CODEX_WORKFLOW.md)
 - [docs/GITHUB_SETUP.md](./docs/GITHUB_SETUP.md)
+- [docs/SAFE_AI_AUTO_MERGE.md](./docs/SAFE_AI_AUTO_MERGE.md)
 - [docs/VERCEL_DEPLOYMENT.md](./docs/VERCEL_DEPLOYMENT.md)
 - [docs/IPHONE_IPAD_TESTING.md](./docs/IPHONE_IPAD_TESTING.md)
 - [docs/LOCAL_DEVELOPMENT.md](./docs/LOCAL_DEVELOPMENT.md)
