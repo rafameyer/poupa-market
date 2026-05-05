@@ -1,15 +1,15 @@
 "use client";
 
-import { Globe, Heart, MapPin, Plus, Radar } from "lucide-react";
+import { Globe, Heart, MapPin, Plus, Radar, Search } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
+import { APP_ROUTES } from "@/constants/app";
 import { useAppMessages, useAppPreferences } from "@/features/preferences/provider";
-
-const MARKET_NAMES = ["Lidl", "Pingo Doce", "Continente", "Auchan", "Aldi"];
 
 export function SettingsWorkspace() {
   const messages = useAppMessages();
@@ -101,6 +101,12 @@ export function SettingsWorkspace() {
               <MapPin className="size-4 text-primary" />
               {preferences.locationLabel || messages.settings.locationPlaceholder}
             </div>
+            {preferences.lastKnownLocation ? (
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                {preferences.lastKnownLocation.latitude.toFixed(4)},{" "}
+                {preferences.lastKnownLocation.longitude.toFixed(4)}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">{messages.settings.savedRadius}</p>
@@ -130,36 +136,32 @@ export function SettingsWorkspace() {
           </Badge>
           <CardTitle>{messages.settings.favoriteMarkets}</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {MARKET_NAMES.map((market) => {
-            const isFavorite = preferences.favoriteMarkets.includes(market);
-
-            return (
-              <Button
-                className="h-10 px-4"
-                key={market}
-                onClick={() =>
-                  updatePreferences((current) => {
-                    const favoriteMarkets = isFavorite
-                      ? current.favoriteMarkets.filter((entry) => entry !== market)
-                      : [...current.favoriteMarkets, market];
-
-                    return {
-                      ...current,
-                      marketScope:
-                        favoriteMarkets.length > 0 ? "favorites" : "nearby",
-                      favoriteMarkets,
-                    };
-                  })
-                }
-                type="button"
-                variant={isFavorite ? "secondary" : "outline"}
-              >
-                <Heart className={isFavorite ? "size-3.5 fill-current" : "size-3.5"} />
-                {market}
-              </Button>
-            );
-          })}
+        <CardContent className="grid gap-3">
+          {preferences.favoriteMarkets.length > 0 ? (
+            preferences.favoriteMarkets.map((market) => (
+              <div className="rounded-[1.35rem] bg-secondary px-4 py-4" key={market.placeId}>
+                <div className="flex items-start gap-3">
+                  <Heart className="mt-0.5 size-4 fill-current text-primary" />
+                  <div>
+                    <p className="font-semibold text-foreground">{market.name}</p>
+                    {market.address ? (
+                      <p className="mt-1 text-sm leading-5 text-muted-foreground">{market.address}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-[1.35rem] bg-secondary px-4 py-4 text-sm leading-6 text-muted-foreground">
+              {messages.markets.addFavorites}
+            </div>
+          )}
+          <Button asChild className="h-12 w-full sm:w-fit" variant="outline">
+            <Link href={APP_ROUTES.markets}>
+              <Search className="size-4" />
+              {messages.markets.findMarkets}
+            </Link>
+          </Button>
         </CardContent>
       </Card>
 

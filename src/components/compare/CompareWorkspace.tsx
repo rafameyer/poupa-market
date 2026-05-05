@@ -44,7 +44,7 @@ export function CompareWorkspace() {
     shoppingLists.find((entry) => entry.list.id === selectedListId) ?? null;
 
   const bestMarket = useMemo(
-    () => preferences.favoriteMarkets[0] ?? messages.common.nearby,
+    () => preferences.favoriteMarkets[0]?.name ?? messages.common.nearby,
     [messages.common.nearby, preferences.favoriteMarkets],
   );
 

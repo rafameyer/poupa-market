@@ -4,6 +4,7 @@ import type {
   PreferredMarketScope,
   UserPreferences,
 } from "@/features/preferences/types";
+import type { FavoriteMarket, SavedLocation } from "@/types/market";
 
 export const DEFAULT_RADIUS_KM = 5;
 
@@ -13,10 +14,105 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   marketScope: "nearby",
   locationLabel: null,
   favoriteMarkets: [],
+  lastKnownLocation: null,
 };
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function slugifyFavoriteName(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function normalizeFavoriteMarkets(value: unknown): FavoriteMarket[] {
+  if (isStringArray(value)) {
+    return value
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((name) => ({
+        placeId: `legacy:${slugifyFavoriteName(name)}`,
+        name,
+        lastSeenAt: new Date(0).toISOString(),
+      }));
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const favorites: FavoriteMarket[] = [];
+
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+
+    const record = entry as Record<string, unknown>;
+    const placeId = typeof record.placeId === "string" ? record.placeId.trim() : "";
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+
+    if (!placeId || !name) {
+      continue;
+    }
+
+    const favorite: FavoriteMarket = {
+      placeId,
+      name,
+      lastSeenAt:
+        typeof record.lastSeenAt === "string" && record.lastSeenAt.trim()
+          ? record.lastSeenAt
+          : new Date(0).toISOString(),
+    };
+    const address = typeof record.address === "string" ? record.address.trim() : "";
+    const googleMapsUri =
+      typeof record.googleMapsUri === "string" ? record.googleMapsUri.trim() : "";
+
+    if (address) {
+      favorite.address = address;
+    }
+
+    favorite.googleMapsUri = googleMapsUri || null;
+    favorite.rating =
+      typeof record.rating === "number" && Number.isFinite(record.rating)
+        ? record.rating
+        : null;
+
+    favorites.push(favorite);
+  }
+
+  return favorites;
+}
+
+function normalizeSavedLocation(value: unknown): SavedLocation | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const latitude = Number(record.latitude);
+  const longitude = Number(record.longitude);
+  const label = typeof record.label === "string" ? record.label.trim() : "";
+  const source = record.source === "manual" ? "manual" : "browser";
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !label) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    label,
+    source,
+    updatedAt:
+      typeof record.updatedAt === "string" && record.updatedAt.trim()
+        ? record.updatedAt
+        : new Date(0).toISOString(),
+  };
 }
 
 function normalizeScope(value: unknown): PreferredMarketScope {
@@ -44,9 +140,8 @@ export function normalizeUserPreferences(value: unknown): UserPreferences {
       typeof record.locationLabel === "string" && record.locationLabel.trim()
         ? record.locationLabel.trim()
         : null,
-    favoriteMarkets: isStringArray(record.favoriteMarkets)
-      ? record.favoriteMarkets.map((entry) => entry.trim()).filter(Boolean)
-      : [],
+    favoriteMarkets: normalizeFavoriteMarkets(record.favoriteMarkets),
+    lastKnownLocation: normalizeSavedLocation(record.lastKnownLocation),
   };
 }
 

@@ -59,6 +59,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 OPENAI_API_KEY=
 OPENAI_LIST_PARSER_MODEL=gpt-4.1-mini
+GOOGLE_MAPS_API_KEY=
 ```
 
 These values come from your Supabase project settings. Supabase documentation may
@@ -68,6 +69,11 @@ the requested `NEXT_PUBLIC_SUPABASE_ANON_KEY` variable name.
 `OPENAI_API_KEY` enables AI-assisted free-text grocery parsing in Phase 1. If it
 is missing, PoupaMarket falls back to the built-in deterministic parser so the
 list flow still works locally.
+
+`GOOGLE_MAPS_API_KEY` enables nearby supermarket lookup on `/markets`. Keep this
+server-only: do not rename it to `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. The app uses
+Next.js API routes to call Google Places and Geocoding without exposing the key
+to browser JavaScript.
 
 ### Run locally
 
@@ -82,6 +88,8 @@ Google authentication. First-time users are routed through `/register` after the
 Google step to confirm their profile details before the protected app opens.
 Then use `/lists` to build a shopping list from free text, review the parsed
 items, save the list locally, and continue into the compare placeholder.
+Use `/markets` to request browser geolocation, search a manual area, adjust the
+radius, and save favorite real supermarkets returned by Google Places.
 
 ### Lint
 
@@ -185,6 +193,14 @@ High-level setup:
 
 Detailed setup instructions are in [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md).
 
+## Google Places Setup
+
+PoupaMarket uses Google Maps Platform for nearby supermarkets in the Markets
+page. Enable `Places API (New)` and `Geocoding API`, then add the server-only
+`GOOGLE_MAPS_API_KEY` environment variable locally and in Vercel.
+
+Detailed setup instructions are in [docs/GOOGLE_PLACES_SETUP.md](./docs/GOOGLE_PLACES_SETUP.md).
+
 ## Install on iPhone or iPad
 
 After deployment:
@@ -263,6 +279,7 @@ The repository is designed to work well with Codex and Copilot, but the project 
 - [docs/PWA_SETUP.md](./docs/PWA_SETUP.md)
 - [docs/AUTHENTICATION.md](./docs/AUTHENTICATION.md)
 - [docs/AUTH_STRATEGY.md](./docs/AUTH_STRATEGY.md)
+- [docs/GOOGLE_PLACES_SETUP.md](./docs/GOOGLE_PLACES_SETUP.md)
 - [docs/CODEX_WORKFLOW.md](./docs/CODEX_WORKFLOW.md)
 - [docs/GITHUB_SETUP.md](./docs/GITHUB_SETUP.md)
 - [docs/SAFE_AI_AUTO_MERGE.md](./docs/SAFE_AI_AUTO_MERGE.md)
